@@ -21,13 +21,27 @@ export default {
           700: '#1e293b',
         },
         tech: '#0284c7',
+        line: '#dde5ee',
       },
       fontFamily: {
-        sans: ['Inter', 'Segoe UI', 'system-ui', 'sans-serif'],
+        sans: ['Public Sans', 'Segoe UI', 'system-ui', 'sans-serif'],
+        serif: ['Newsreader', 'Georgia', 'serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      borderRadius: {
+        none: '0',
+        sm: '2px',
+        DEFAULT: '3px',
+        md: '4px',
+        lg: '5px',
+        xl: '6px',
+        '2xl': '8px',
+        '3xl': '10px',
+        full: '9999px',
       },
       boxShadow: {
-        card: '0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06)',
-        lift: '0 10px 30px -12px rgba(15, 23, 42, 0.28)',
+        card: 'none',
+        lift: '0 18px 40px -24px rgba(15, 23, 42, 0.35)',
       },
       keyframes: {
         equalize: {
