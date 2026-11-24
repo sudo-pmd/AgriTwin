@@ -9,6 +9,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
+  "allowScripts": {
+    "esbuild": true,
+    "core-js": false
+  },
   "dependencies": {
     "@turf/turf": "^7.1.0",
     "jspdf": "^2.5.2",
