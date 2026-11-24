@@ -163,11 +163,6 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
   return (
     <section className="window">
       <div className="window-head">
-        <span className="window-dots">
-          <span />
-          <span />
-          <span />
-        </span>
         <h2 className="window-title">{title}</h2>
         {hint && <span className="window-hint">{hint}</span>}
       </div>
@@ -277,7 +272,7 @@ export default function ScoreMethodology() {
         </p>
         <div className="grid gap-2.5 lg:grid-cols-3">
           {PROVENANCE.map((group) => (
-            <div key={group.label} className="rounded-[9px] border border-[#eef3f8] p-3">
+            <div key={group.label} className="rounded-[10px] border border-[#eef3f8] p-3">
               <span className={`chip ${group.className}`}>{group.label}</span>
               <dl className="mt-2 divide-y divide-[#f1f5f9]">
                 {group.rows.map((row) => (

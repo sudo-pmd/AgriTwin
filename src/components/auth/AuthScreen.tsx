@@ -14,6 +14,12 @@ const ROLE_LABEL: Record<AccountRole, string> = {
   verificateur: 'Conformité AgriTwin',
 };
 
+const ROLE_SHORT: Record<AccountRole, string> = {
+  exploitant: 'Exploitant',
+  financeur: 'Financeur',
+  verificateur: 'Conformité',
+};
+
 export default function AuthScreen({ onAuthenticated, onStartDemo }: AuthScreenProps) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [phone, setPhone] = useState('');
@@ -52,62 +58,30 @@ export default function AuthScreen({ onAuthenticated, onStartDemo }: AuthScreenP
     }
   };
 
+  const switchMode = (next: 'login' | 'signup') => {
+    setMode(next);
+    setError(null);
+  };
+
   return (
-    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="relative flex flex-col justify-between overflow-hidden bg-forest-800 px-6 py-6 text-white sm:px-10 lg:px-14 lg:py-12">
-        <div className="flex items-center gap-3">
-          <img
-            src="./agritwin-logo.webp"
-            alt="Emblème AgriTwin"
-            className="h-11 w-11 border border-white/15 bg-white/5 object-contain p-1"
-          />
-          <div>
-            <p className="font-serif text-2xl leading-none">AgriTwin</p>
-            <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
-              Jumeau numérique &amp; Score Vert
-            </p>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="w-full max-w-[420px]">
+        <div className="rounded-[22px] border border-[#e6edf4] bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_26px_50px_-26px_rgba(15,23,42,0.28)] transition-shadow duration-300 hover:shadow-[0_2px_4px_rgba(15,23,42,0.05),0_34px_62px_-28px_rgba(15,23,42,0.32)] sm:p-8">
+          <div className="flex items-center gap-3">
+            <img
+              src="./agritwin-logo.webp"
+              alt="Emblème AgriTwin"
+              className="h-11 w-11 rounded-xl border border-forest-100 bg-forest-50 object-contain p-1 shadow-[0_8px_16px_-10px_rgba(20,83,45,0.65)]"
+            />
+            <div>
+              <p className="font-serif text-xl leading-none text-slateink-800">AgriTwin</p>
+              <p className="mt-1 text-[11.5px] font-medium text-slate-400">
+                Jumeau numérique &amp; Score Vert
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="mt-6 max-w-xl lg:mt-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#86efac] sm:text-[11px]">
-            Registre agricole vérifié
-          </p>
-          <h1 className="mt-2 font-serif text-[1.7rem] leading-[1.1] text-white sm:text-4xl lg:text-5xl">
-            La preuve agronomique
-            <br className="hidden sm:block" />{' '}
-            qui ouvre le crédit.
-          </h1>
-          <p className="mt-3 hidden max-w-lg text-sm leading-relaxed text-white/70 lg:mt-4 lg:block">
-            Chaque parcelle est déclarée, géolocalisée et contrôlée par nos équipes. Les relevés
-            capteur et satellite sont scellés, puis transformés en un Score Vert que la banque peut
-            consulter sans intermédiaire.
-          </p>
-
-          <dl className="mt-8 hidden grid-cols-3 gap-px border border-white/15 bg-white/15 lg:grid">
-            {[
-              ['90 j', 'de relevés scellés'],
-              ['4', 'pièces vérifiées'],
-              ['1', 'score auditable'],
-            ].map(([value, label]) => (
-              <div key={label} className="bg-forest-800 px-3 py-3">
-                <dt className="font-serif text-2xl leading-none">{value}</dt>
-                <dd className="mt-1 text-[10px] uppercase leading-tight tracking-[0.1em] text-white/55">
-                  {label}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        <p className="mt-6 hidden text-[11px] leading-relaxed text-white/45 lg:mt-0 lg:block">
-          Concours AKTIION 2026 · École Polytechnique de Thiès · Données de démonstration
-        </p>
-      </section>
-
-      <section className="flex items-start justify-center px-4 py-8 sm:px-8 lg:items-center lg:px-12">
-        <div className="w-full max-w-md">
-          <div className="flex gap-6 border-b border-[#dde5ee]">
+          <div className="mt-6 flex rounded-xl bg-[#f1f5f9] p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]">
             {(
               [
                 ['login', 'Connexion'],
@@ -117,14 +91,12 @@ export default function AuthScreen({ onAuthenticated, onStartDemo }: AuthScreenP
               <button
                 key={key}
                 type="button"
-                onClick={() => {
-                  setMode(key);
-                  setError(null);
-                }}
-                className={`-mb-px border-b-2 pb-2.5 text-[13px] font-semibold transition ${
+                onClick={() => switchMode(key)}
+                aria-pressed={mode === key}
+                className={`flex-1 rounded-[10px] px-3 py-2 text-[12.5px] font-semibold transition-all duration-200 ${
                   mode === key
-                    ? 'border-forest-700 text-forest-800'
-                    : 'border-transparent text-slate-500 hover:text-slateink-800'
+                    ? 'bg-white text-forest-800 shadow-[0_1px_2px_rgba(15,23,42,0.08),0_6px_12px_-8px_rgba(15,23,42,0.35)]'
+                    : 'text-slate-500 hover:bg-white/60 hover:text-slateink-800'
                 }`}
               >
                 {label}
@@ -132,48 +104,52 @@ export default function AuthScreen({ onAuthenticated, onStartDemo }: AuthScreenP
             ))}
           </div>
 
-          <form onSubmit={submit} className="mt-5 space-y-3.5">
+          <form onSubmit={submit} className="mt-5 space-y-4">
             {mode === 'signup' && (
               <>
-                <div>
-                  <label className="field-label" htmlFor="signup-name">
+                <label className="block" htmlFor="signup-name">
+                  <span className="mb-1.5 block text-[12px] font-semibold text-slate-600">
                     Nom complet
-                  </label>
+                  </span>
                   <input
                     id="signup-name"
-                    className="field"
+                    className="w-full rounded-xl border border-[#dbe4ee] bg-white px-3 py-2.5 text-[14.5px] text-slateink-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-[#c3d2e2] focus:border-forest-500 focus:ring-4 focus:ring-forest-500/10"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     placeholder="Aminata Seck"
                     autoComplete="name"
                   />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="signup-org">
+                </label>
+
+                <label className="block" htmlFor="signup-org">
+                  <span className="mb-1.5 block text-[12px] font-semibold text-slate-600">
                     Exploitation ou organisation
-                  </label>
+                  </span>
                   <input
                     id="signup-org"
-                    className="field"
+                    className="w-full rounded-xl border border-[#dbe4ee] bg-white px-3 py-2.5 text-[14.5px] text-slateink-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-[#c3d2e2] focus:border-forest-500 focus:ring-4 focus:ring-forest-500/10"
                     value={organisation}
                     onChange={(event) => setOrganisation(event.target.value)}
                     placeholder="Coopérative de Mboro"
                     autoComplete="organization"
                   />
-                </div>
+                </label>
+
                 <fieldset>
-                  <legend className="field-label">Type de compte</legend>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <legend className="mb-1.5 block text-[12px] font-semibold text-slate-600">
+                    Type de compte
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
                     {(['exploitant', 'financeur'] as AccountRole[]).map((value) => (
                       <button
                         key={value}
                         type="button"
                         onClick={() => setRole(value)}
                         aria-pressed={role === value}
-                        className={`border px-2.5 py-2 text-left text-[12px] font-semibold leading-snug transition ${
+                        className={`rounded-xl border px-3 py-2 text-left text-[11.5px] font-semibold leading-snug transition-all duration-200 ${
                           role === value
-                            ? 'border-forest-700 bg-forest-50 text-forest-800'
-                            : 'border-[#cfd9e5] bg-white text-slate-600 hover:border-forest-400'
+                            ? 'border-forest-500 bg-forest-50 text-forest-800 shadow-[0_6px_14px_-10px_rgba(20,83,45,0.7)]'
+                            : 'border-[#dbe4ee] bg-white text-slate-500 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:-translate-y-px hover:border-[#c3d2e2] hover:text-slateink-800 hover:shadow-[0_8px_16px_-12px_rgba(15,23,42,0.4)]'
                         }`}
                       >
                         {ROLE_LABEL[value]}
@@ -184,17 +160,15 @@ export default function AuthScreen({ onAuthenticated, onStartDemo }: AuthScreenP
               </>
             )}
 
-            <div>
-              <label className="field-label" htmlFor="auth-phone">
+            <label className="block" htmlFor="auth-phone">
+              <span className="mb-1.5 block text-[12px] font-semibold text-slate-600">
                 Téléphone
-              </label>
-              <div className="flex">
-                <span className="flex items-center border border-r-0 border-[#cfd9e5] bg-[#f1f5f9] px-3 text-[13px] font-semibold text-slate-500">
-                  +221
-                </span>
+              </span>
+              <div className="flex items-center rounded-xl border border-[#dbe4ee] bg-white shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:border-[#c3d2e2] focus-within:border-forest-500 focus-within:ring-4 focus-within:ring-forest-500/10">
+                <span className="pl-3 text-[13px] font-medium text-slate-400">+221</span>
                 <input
                   id="auth-phone"
-                  className="field border-l-0"
+                  className="w-full bg-transparent px-2.5 py-2.5 text-[14.5px] text-slateink-800 outline-none placeholder:text-slate-400"
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
                   placeholder="77 000 00 01"
@@ -202,85 +176,88 @@ export default function AuthScreen({ onAuthenticated, onStartDemo }: AuthScreenP
                   autoComplete="tel"
                 />
               </div>
-            </div>
-            <div>
-              <label className="field-label" htmlFor="auth-password">
+            </label>
+
+            <label className="block" htmlFor="auth-password">
+              <span className="mb-1.5 block text-[12px] font-semibold text-slate-600">
                 Mot de passe
-              </label>
+              </span>
               <input
                 id="auth-password"
                 type="password"
-                className="field"
+                className="w-full rounded-xl border border-[#dbe4ee] bg-white px-3 py-2.5 text-[14.5px] text-slateink-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-[#c3d2e2] focus:border-forest-500 focus:ring-4 focus:ring-forest-500/10"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="6 caractères minimum"
+                placeholder={mode === 'login' ? '••••••••' : '6 caractères minimum'}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               />
-            </div>
+            </label>
 
             {error && (
               <p
                 role="alert"
-                className="flex items-start gap-2 border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[12px] font-semibold text-[#b91c1c]"
+                className="flex items-start gap-2 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[12px] font-medium leading-snug text-[#b91c1c] shadow-[0_6px_14px_-12px_rgba(185,28,28,0.6)]"
               >
                 <Glyph name="alert" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {error}
               </p>
             )}
 
-            <button type="submit" className="btn-primary w-full" disabled={busy}>
+            <button
+              type="submit"
+              disabled={busy}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-forest-800 px-4 py-3 text-[13.5px] font-semibold text-white shadow-[0_10px_20px_-12px_rgba(10,42,23,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-forest-700 hover:shadow-[0_16px_26px_-14px_rgba(10,42,23,0.85)] active:translate-y-0 active:shadow-[0_4px_10px_-8px_rgba(10,42,23,0.8)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            >
               {busy ? 'Vérification…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
               <Glyph name="arrowRight" className="h-4 w-4" />
             </button>
           </form>
 
-          <div className="mt-6 border-t border-[#dde5ee] pt-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
-              Comptes de démonstration
-            </p>
-            <ul className="mt-2 divide-y divide-[#e6edf4] border border-[#dde5ee] bg-white">
-              {DEMO_LOGINS.map((demo) => (
-                <li
-                  key={demo.phone}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors duration-200 hover:bg-[#f7fbf8]"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-semibold text-slateink-800">
-                      {demo.name}
-                    </p>
-                    <p className="truncate text-[11px] text-slate-500">{demo.organisation}</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-secondary shrink-0 px-2.5 py-1 text-[11px]"
-                    disabled={busy}
-                    onClick={() => void run(() => signIn(demo.phone, demo.password))}
-                  >
-                    Entrer
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-              Démonstration : mot de passe <span className="font-mono">demo1234</span>. Les comptes
-              créés et les pièces déposées restent sur cet appareil.
-            </p>
-            {onStartDemo && (
-              <div className="mt-3 border-t border-[#dde5ee] pt-3">
-                <button type="button" className="btn-primary w-full" onClick={onStartDemo} disabled={busy}>
-                  <Glyph name="play" className="h-4 w-4" />
-                  Lancer la démo guidée
-                  <Glyph name="arrowRight" className="h-4 w-4" />
-                </button>
-                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-                  Réinitialise comptes et données locales, puis déroule le parcours complet en huit
-                  étapes, sans recherche dans les menus.
-                </p>
-              </div>
-            )}
-          </div>
+          <p className="mt-4 text-center text-[12px] text-slate-500">
+            {mode === 'login' ? 'Pas encore de compte ?' : 'Déjà inscrit ?'}{' '}
+            <button
+              type="button"
+              onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+              className="font-semibold text-forest-700 underline decoration-forest-200 decoration-2 underline-offset-2 transition-colors hover:text-forest-600 hover:decoration-forest-500"
+            >
+              {mode === 'login' ? 'Créer un compte' : 'Se connecter'}
+            </button>
+          </p>
         </div>
-      </section>
+
+        <div className="mt-4 rounded-[18px] border border-[#e6edf4] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03),0_18px_36px_-26px_rgba(15,23,42,0.28)] transition-shadow duration-300 hover:shadow-[0_2px_4px_rgba(15,23,42,0.04),0_26px_46px_-26px_rgba(15,23,42,0.3)]">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
+              Démonstration
+            </p>
+            <p className="font-mono text-[10.5px] text-slate-400">demo1234</p>
+          </div>
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
+            {DEMO_LOGINS.map((demo) => (
+              <button
+                key={demo.phone}
+                type="button"
+                disabled={busy}
+                onClick={() => void run(() => signIn(demo.phone, demo.password))}
+                className="rounded-xl border border-[#e6edf4] bg-white px-2 py-2 text-[11.5px] font-semibold text-slateink-700 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-200 hover:-translate-y-px hover:border-forest-200 hover:bg-forest-50 hover:text-forest-800 hover:shadow-[0_10px_18px_-14px_rgba(20,83,45,0.7)] active:translate-y-0 disabled:opacity-50"
+              >
+                {ROLE_SHORT[demo.role]}
+              </button>
+            ))}
+          </div>
+          {onStartDemo && (
+            <button
+              type="button"
+              onClick={onStartDemo}
+              disabled={busy}
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#dbe4ee] bg-white px-3 py-2 text-[12px] font-semibold text-slateink-700 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-200 hover:-translate-y-px hover:border-forest-300 hover:bg-forest-50 hover:text-forest-800 hover:shadow-[0_10px_20px_-14px_rgba(20,83,45,0.6)] active:translate-y-0"
+            >
+              <Glyph name="play" className="h-3 w-3" />
+              Démo guidée
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

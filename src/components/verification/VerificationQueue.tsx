@@ -50,7 +50,7 @@ function DocumentRow({ document }: { document: ParcelDocument }) {
 
   return (
     <li className="flex items-center gap-3 border-b border-[#eef3f8] px-3 py-2 last:border-b-0">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[#dde5ee] bg-[#f8fafc] text-slate-500">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#eef3f8] bg-[#fbfdfc] text-slate-500">
         <Glyph name={document.mime.startsWith('image/') ? 'camera' : 'file'} className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
@@ -206,7 +206,7 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
                   {CROP_CATALOG[selected.cropKey].label}
                 </p>
               </div>
-              <span className="chip border-[#dde5ee] bg-[#f8fafc] text-slate-600">
+              <span className="chip border-[#eef3f8] bg-[#fbfdfc] text-slate-600">
                 {selected.verification.status === 'verifie'
                   ? 'Certifiée'
                   : selected.verification.status === 'rejete'
@@ -217,7 +217,7 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
 
             <div className="grid grid-cols-1 gap-3 px-4 py-4 xl:grid-cols-[1fr_1fr]">
               <div>
-                <dl className="divide-y divide-[#eef3f8] border border-[#dde5ee]">
+                <dl className="divide-y divide-[#eef3f8] overflow-hidden rounded-xl border border-[#eef3f8]">
                   {[
                     ['Coordonnées', `${selected.centre.lat.toFixed(5)}, ${selected.centre.lng.toFixed(5)}`],
                     ['Surface', `${formatNumber(selected.areaHa, 2)} ha`],
@@ -231,7 +231,7 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
                   ))}
                 </dl>
 
-                <div className="mt-2 border border-[#dde5ee]">
+                <div className="mt-2 overflow-hidden rounded-xl border border-[#eef3f8]">
                   <MapContainer
                     center={[selected.centre.lat, selected.centre.lng]}
                     zoom={15}
@@ -270,7 +270,7 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
                 <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   Pièces déposées ({selected.documents.length})
                 </p>
-                <ul className="mt-1.5 border border-[#dde5ee]">
+                <ul className="mt-1.5 overflow-hidden rounded-xl border border-[#eef3f8]">
                   {selected.documents.map((document) => (
                     <DocumentRow key={document.id} document={document} />
                   ))}
@@ -329,7 +329,7 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
                     </p>
                   </>
                 ) : (
-                  <div className="mt-2 border border-[#eef3f8] bg-[#f8fafc] px-3 py-2 text-[11.5px] leading-relaxed text-slate-600">
+                  <div className="mt-2 rounded-[10px] border border-[#eef3f8] bg-[#fbfdfc] px-3 py-2 text-[11.5px] leading-relaxed text-slate-600">
                     <p className="font-semibold text-slateink-800">
                       Dossier{' '}
                       {selected.verification.status === 'verifie'

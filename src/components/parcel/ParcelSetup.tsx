@@ -643,7 +643,7 @@ export default function ParcelSetup({
                   </div>
                 </div>
 
-                <div className="border border-[#dde5ee]">
+                <div className="overflow-hidden rounded-xl border border-[#eef3f8]">
                   <MapContainer
                     center={[centre.lat, centre.lng]}
                     zoom={15}
@@ -828,7 +828,7 @@ export default function ParcelSetup({
                     </div>
                   );
                 })}
-                <p className="flex flex-wrap items-center justify-between gap-2 border border-[#eef3f8] bg-[#fbfdfc] px-3 py-2 text-[11px] text-slate-500">
+                <p className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-[#eef3f8] bg-[#fbfdfc] px-3 py-2 text-[11px] text-slate-500">
                   <span>
                     Quota du dossier : {megabytes(MAX_DOSSIER_BYTES)} au total, {MAX_PHOTOS}{' '}
                     photos maximum, {megabytes(MAX_FILE_BYTES)} par pièce.
@@ -860,7 +860,7 @@ export default function ParcelSetup({
 
             {step === 3 && (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <dl className="divide-y divide-[#eef3f8] border border-[#dde5ee]">
+                <dl className="divide-y divide-[#eef3f8] overflow-hidden rounded-xl border border-[#eef3f8]">
                   {[
                     ['Nom', draft.name || '—'],
                     ['Titulaire', `${draft.ownerName} — ${draft.ownerRole}`],
@@ -879,7 +879,7 @@ export default function ParcelSetup({
                     </div>
                   ))}
                 </dl>
-                <div className="border border-[#dde5ee] bg-[#f8fafc] p-3.5">
+                <div className="rounded-xl border border-[#eef3f8] bg-[#fbfdfc] p-3.5">
                   <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-slate-600">
                     <Glyph name="shieldCheck" className="h-4 w-4 text-forest-600" />
                     Contrôle AgriTwin
@@ -937,7 +937,7 @@ export default function ParcelSetup({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#dde5ee] bg-[#f8fafc] px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef3f8] bg-[#fbfdfc] px-4 py-3 sm:px-5">
             <button
               type="button"
               className="btn-ghost"

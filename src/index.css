@@ -73,7 +73,7 @@
   --line-strong: #cbd8e6;
   --ink: #0f172a;
   --muted: #5b6a7d;
-  --rail: #08210f;
+  --rail: #0a2a17;
 }
 
 html {
@@ -92,10 +92,7 @@ body {
   font-size: 15px;
   line-height: 1.5;
   background-color: #f8fafc;
-  background-image:
-    radial-gradient(90% 55% at 12% -8%, rgba(187, 247, 208, 0.34), transparent 62%),
-    radial-gradient(70% 45% at 96% 0%, rgba(2, 132, 199, 0.09), transparent 60%),
-    radial-gradient(80% 50% at 50% 105%, rgba(20, 83, 45, 0.06), transparent 65%);
+  background-image: radial-gradient(70% 45% at 15% -5%, rgba(187, 247, 208, 0.3), transparent 65%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -125,6 +122,12 @@ h4,
     outline: 2px solid #15803d;
     outline-offset: 2px;
   }
+  /* Contrôles natifs sans classe dédiée : même arrondi que le système. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    border-radius: 10px;
+  }
 }
 
 @layer components {
@@ -132,61 +135,35 @@ h4,
      Fenêtres : la brique visuelle principale (chrome + corps).
      --------------------------------------------------------------- */
   .window {
-    @apply relative border border-[#e3e9f1] bg-white shadow-card;
-    border-radius: 12px;
+    @apply relative border border-[#e6edf4] bg-white;
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 24px 48px -32px rgba(15, 23, 42, 0.32);
     transition:
       box-shadow 0.3s cubic-bezier(0.22, 0.7, 0.3, 1),
       border-color 0.25s ease;
   }
   .window:hover {
-    border-color: #d9e4ef;
+    border-color: #dbe4ee;
     box-shadow:
-      0 2px 4px rgba(16, 32, 24, 0.05),
-      0 22px 44px -28px rgba(16, 32, 24, 0.45);
+      0 2px 4px rgba(15, 23, 42, 0.05),
+      0 30px 54px -30px rgba(15, 23, 42, 0.36);
   }
   .window-head {
-    @apply relative flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[#eef3f8];
-    padding: 10px 14px;
-    background:
-      linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
-  }
-  .window-head::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #15803d, rgba(21, 128, 61, 0.15) 55%, transparent);
-    opacity: 0.6;
-    transition: opacity 0.35s ease;
-  }
-  .window:hover .window-head::before {
-    opacity: 1;
-  }
-  .window-dots {
-    @apply mr-1 flex items-center gap-[5px];
-  }
-  .window-dots span {
-    @apply block h-[7px] w-[7px] rounded-full;
-    background: #dde5ee;
-  }
-  .window-dots span:first-child {
-    background: #bbf7d0;
-  }
-  .window-dots span:last-child {
-    background: #e2e8f0;
+    @apply relative flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[#eef3f8] bg-white;
+    padding: 11px 16px;
   }
   .window-title {
-    @apply min-w-0 flex-1 truncate text-[12.5px] font-semibold text-slateink-800;
+    @apply min-w-0 flex-1 truncate text-[13px] font-semibold text-slateink-800;
   }
   .window-hint {
     @apply truncate text-[10px] uppercase text-slate-400;
     letter-spacing: 0.11em;
   }
   .window-body {
-    padding: 14px;
+    padding: 16px;
   }
   .window-body-tight {
     padding: 10px;
@@ -197,17 +174,20 @@ h4,
 
   /* Carte historique : même langage, chrome allégé (pas d'entête). */
   .card {
-    @apply relative border border-[#e3e9f1] bg-white shadow-card;
-    border-radius: 10px;
+    @apply relative border border-[#e6edf4] bg-white;
+    border-radius: 14px;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 18px 38px -30px rgba(15, 23, 42, 0.3);
     transition:
       box-shadow 0.3s cubic-bezier(0.22, 0.7, 0.3, 1),
       border-color 0.25s ease;
   }
   .card:hover {
-    border-color: #d9e4ef;
+    border-color: #dbe4ee;
     box-shadow:
-      0 2px 4px rgba(16, 32, 24, 0.05),
-      0 18px 38px -26px rgba(16, 32, 24, 0.4);
+      0 2px 4px rgba(15, 23, 42, 0.05),
+      0 24px 44px -28px rgba(15, 23, 42, 0.34);
   }
 
   .card-title,
@@ -218,7 +198,7 @@ h4,
 
   .stat {
     @apply border border-[#eef3f8] bg-[#fbfdfc] p-3;
-    border-radius: 8px;
+    border-radius: 12px;
     transition:
       background-color 0.22s ease,
       border-color 0.22s ease,
@@ -260,8 +240,8 @@ h4,
   .btn {
     @apply inline-flex select-none items-center justify-center gap-2 border border-transparent px-3.5 text-[13px] font-semibold transition-all duration-200 ease-smooth;
     min-height: 38px;
-    border-radius: 8px;
-    box-shadow: 0 1px 1px rgba(16, 32, 24, 0.04);
+    border-radius: 12px;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
   }
   .btn:focus-visible {
     outline: 2px solid #15803d;
@@ -275,35 +255,23 @@ h4,
     box-shadow: 0 1px 2px rgba(16, 32, 24, 0.09);
   }
   .btn-primary {
-    @apply btn bg-forest-700 text-white;
-    background-image: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.11),
-      rgba(255, 255, 255, 0) 62%
-    );
-    box-shadow:
-      0 1px 2px rgba(10, 42, 23, 0.22),
-      0 8px 18px -12px rgba(10, 42, 23, 0.75);
+    @apply btn bg-forest-800 text-white;
+    box-shadow: 0 10px 20px -12px rgba(10, 42, 23, 0.9);
   }
   .btn-primary:hover {
-    @apply bg-forest-800;
-    box-shadow:
-      0 2px 4px rgba(10, 42, 23, 0.24),
-      0 14px 24px -14px rgba(10, 42, 23, 0.8);
+    @apply bg-forest-700;
+    box-shadow: 0 16px 26px -14px rgba(10, 42, 23, 0.85);
   }
   .btn-primary:active {
     @apply bg-forest-900;
   }
   .btn-secondary {
     @apply btn border-[#dbe4ee] bg-white text-slateink-700;
-    background-image: linear-gradient(180deg, #ffffff, #fcfdfe);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   }
   .btn-secondary:hover {
-    @apply border-forest-500 text-forest-700;
-    background-image: linear-gradient(180deg, #ffffff, #f5fbf7);
-    box-shadow:
-      0 1px 2px rgba(16, 32, 24, 0.05),
-      0 10px 22px -16px rgba(16, 32, 24, 0.5);
+    @apply border-forest-300 bg-forest-50 text-forest-800;
+    box-shadow: 0 10px 20px -14px rgba(20, 83, 45, 0.6);
   }
   .btn-ghost {
     @apply btn text-slate-600;
@@ -314,7 +282,7 @@ h4,
 
   .chip {
     @apply inline-flex items-center gap-1.5 border px-2 py-[3px] text-[10px] font-bold uppercase text-slate-600;
-    border-radius: 5px;
+    border-radius: 8px;
     letter-spacing: 0.07em;
     border-color: #e3e9f1;
     line-height: 1.35;
@@ -336,12 +304,12 @@ h4,
 
   /* Onglets segmentés (filtre compact, type barre d'outils native). */
   .seg {
-    @apply inline-flex items-center gap-0.5 border border-[#e3e9f1] bg-[#f4f7fb] p-[3px];
-    border-radius: 9px;
+    @apply inline-flex items-center gap-0.5 border border-[#e6edf4] bg-[#f1f5f9] p-[3px];
+    border-radius: 12px;
     box-shadow: inset 0 1px 2px rgba(16, 32, 24, 0.05);
   }
   .seg-item {
-    @apply rounded-[6px] px-2.5 py-1 text-[11.5px] font-semibold text-slate-500 transition-all duration-200;
+    @apply rounded-[9px] px-2.5 py-1 text-[11.5px] font-semibold text-slate-500 transition-all duration-200;
   }
   .seg-item:hover {
     @apply text-slateink-800;
@@ -357,18 +325,18 @@ h4,
   }
   .field {
     @apply w-full border border-[#dbe4ee] bg-white px-3 py-2 text-sm text-slateink-800 outline-none transition-all duration-200 placeholder:text-slate-400;
-    border-radius: 8px;
+    border-radius: 12px;
     min-height: 40px;
-    box-shadow: inset 0 1px 1px rgba(16, 32, 24, 0.03);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
   }
   .field:hover {
-    border-color: #cbd8e6;
+    border-color: #c3d2e2;
   }
   .field:focus {
     border-color: #15803d;
     box-shadow:
-      inset 0 1px 1px rgba(16, 32, 24, 0.03),
-      0 0 0 3px rgba(21, 128, 61, 0.13);
+      inset 0 1px 2px rgba(15, 23, 42, 0.04),
+      0 0 0 4px rgba(21, 128, 61, 0.1);
   }
 
   .rule {

@@ -61,7 +61,7 @@ export default function GuidedDemo({
   return (
     <aside
       aria-label="Démo guidée AgriTwin"
-      className="fixed inset-x-3 bottom-3 z-[1400] overflow-hidden rounded-[12px] border border-[#e3e9f1] bg-white shadow-lift animate-rise sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[392px]"
+      className="fixed inset-x-3 bottom-3 z-[1400] overflow-hidden rounded-[16px] border border-[#e6edf4] bg-white shadow-lift animate-rise sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[392px]"
     >
       <div className="h-[3px] bg-[#eef3f8]">
         <div
@@ -80,7 +80,7 @@ export default function GuidedDemo({
             type="button"
             onClick={() => setCollapsed(true)}
             aria-label="Réduire le panneau de démonstration"
-            className="grid h-7 w-7 place-items-center rounded-[7px] text-slate-400 transition hover:bg-[#f1f5f9] hover:text-slate-600"
+            className="grid h-7 w-7 place-items-center rounded-[9px] text-slate-400 transition hover:bg-[#f1f5f9] hover:text-slate-600"
           >
             <Glyph name="chevronDown" className="h-4 w-4" />
           </button>
@@ -88,7 +88,7 @@ export default function GuidedDemo({
             type="button"
             onClick={onExit}
             aria-label="Quitter la démonstration"
-            className="grid h-7 w-7 place-items-center rounded-[7px] text-slate-400 transition hover:bg-[#fef2f2] hover:text-[#b91c1c]"
+            className="grid h-7 w-7 place-items-center rounded-[9px] text-slate-400 transition hover:bg-[#fef2f2] hover:text-[#b91c1c]"
           >
             <Glyph name="close" className="h-4 w-4" />
           </button>

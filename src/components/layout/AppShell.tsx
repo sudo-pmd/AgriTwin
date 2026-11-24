@@ -125,7 +125,7 @@ export default function AppShell({
   const renderParcelPicker = (variant: 'bar' | 'sheet') =>
     parcels.length === 0 ? null : (
       <label
-        className={`relative flex h-9 min-w-0 items-center gap-2 rounded-[9px] border border-[#e3e9f1] bg-white/90 pl-2.5 pr-2 transition hover:border-[#cbd8e6] focus-within:border-forest-500 focus-within:ring-2 focus-within:ring-forest-500/15 ${
+        className={`relative flex h-9 min-w-0 items-center gap-2 rounded-[10px] border border-[#e6edf4] bg-white pl-2.5 pr-2 transition-all duration-200 hover:-translate-y-px hover:border-[#c3d2e2] hover:shadow-[0_8px_18px_-14px_rgba(15,23,42,0.5)] focus-within:border-forest-500 focus-within:ring-4 focus-within:ring-forest-500/10 ${
           variant === 'sheet' ? 'w-full' : ''
         }`}
       >
@@ -173,7 +173,7 @@ export default function AppShell({
               }}
               aria-expanded={hasChildren ? expanded : undefined}
               aria-current={sectionActive ? 'true' : undefined}
-              className={`group relative flex w-full items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left transition-all duration-200 ${
+              className={`group relative flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-all duration-200 ${
                 sectionActive
                   ? 'bg-white/[0.09] text-white ring-1 ring-inset ring-white/[0.06]'
                   : 'text-white/60 hover:translate-x-[2px] hover:bg-white/[0.055] hover:text-white'
@@ -227,7 +227,7 @@ export default function AppShell({
                             type="button"
                             onClick={() => go(item.key)}
                             aria-current={active ? 'page' : undefined}
-                            className={`flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[12px] transition-all duration-150 ${
+                            className={`flex w-full items-center gap-2 rounded-[9px] px-2 py-1.5 text-left text-[12px] transition-all duration-150 ${
                               active
                                 ? 'bg-white/[0.07] font-semibold text-white'
                                 : 'text-white/50 hover:translate-x-[1px] hover:bg-white/[0.04] hover:text-white/85'
@@ -256,12 +256,12 @@ export default function AppShell({
 
   const renderAccount = (variant: 'rail' | 'drawer') => (
     <div
-      className={`rounded-[10px] border border-white/10 bg-white/[0.045] p-2 ${
+      className={`rounded-[12px] border border-white/10 bg-white/[0.045] p-2 ${
         variant === 'drawer' ? 'mt-4' : ''
       }`}
     >
       <div className="flex items-center gap-2">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-[#4ade80]/15 text-[11px] font-bold text-[#bbf7d0]">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#4ade80]/15 text-[11px] font-bold text-[#bbf7d0]">
           {initialsOf(account.name)}
         </span>
         <div className="min-w-0 flex-1">
@@ -277,7 +277,7 @@ export default function AppShell({
           onClick={onSignOut}
           title="Se déconnecter"
           aria-label="Se déconnecter"
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] text-white/50 transition-colors hover:bg-white/10 hover:text-white"
         >
           <Glyph name="logout" className="h-4 w-4" />
         </button>
@@ -298,13 +298,13 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-[1100] hidden w-[258px] flex-col overflow-y-auto bg-[#08210f] px-2.5 py-3 lg:flex scroll-thin-dark">
+      <aside className="fixed inset-y-0 left-0 z-[1100] hidden w-[258px] flex-col overflow-y-auto bg-forest-900 px-2.5 py-3 lg:flex scroll-thin-dark">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(120%_80%_at_20%_0%,rgba(74,222,128,0.16),transparent_65%)]"
         />
         <div className="relative flex items-center gap-2.5 px-1.5 pb-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-[9px] bg-white/95 shadow-[0_2px_10px_rgba(0,0,0,0.25)]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-white/95 shadow-[0_2px_10px_rgba(0,0,0,0.25)]">
             <img
               src="./agritwin-logo.webp"
               alt="Emblème AgriTwin"
@@ -330,7 +330,7 @@ export default function AppShell({
             <button
               type="button"
               onClick={onOpenDemo}
-              className="flex w-full items-center gap-2 rounded-[9px] border border-[#4ade80]/25 bg-[#4ade80]/10 px-2.5 py-2 text-[12px] font-semibold text-[#bbf7d0] transition hover:border-[#4ade80]/45 hover:bg-[#4ade80]/15"
+              className="flex w-full items-center gap-2 rounded-[10px] border border-[#4ade80]/25 bg-[#4ade80]/10 px-2.5 py-2 text-[12px] font-semibold text-[#bbf7d0] transition hover:border-[#4ade80]/45 hover:bg-[#4ade80]/15"
             >
               <Glyph name="play" className="h-3.5 w-3.5" />
               Démo guidée
@@ -339,20 +339,17 @@ export default function AppShell({
           )}
           {renderAccount('rail')}
         </div>
-        <p className="relative px-1 pt-2 text-[9px] leading-relaxed text-white/25">
-          Concours AKTIION 2026 · EPT Thiès
-        </p>
       </aside>
 
       <div className="lg:pl-[258px]">
-        <header className="sticky top-0 z-[900] border-b border-[#e3e9f1] bg-white/85 backdrop-blur-md supports-[backdrop-filter]:bg-white/70">
+        <header className="sticky top-0 z-[900] border-b border-[#e6edf4] bg-white/85 backdrop-blur-md shadow-[0_10px_28px_-28px_rgba(15,23,42,0.5)] supports-[backdrop-filter]:bg-white/70">
           <div className="px-3 sm:px-5 lg:px-7">
           <div className="flex h-[58px] items-center gap-2">
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
               aria-label="Ouvrir la navigation"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] border border-[#e3e9f1] bg-white text-slate-600 transition hover:border-[#cbd8e6] hover:text-slateink-800 lg:hidden"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-[#e6edf4] bg-white text-slate-600 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-200 hover:-translate-y-px hover:border-[#c3d2e2] hover:text-slateink-800 hover:shadow-[0_8px_18px_-14px_rgba(15,23,42,0.5)] lg:hidden"
             >
               <Glyph name="menu" className="h-[18px] w-[18px]" />
             </button>
@@ -372,7 +369,7 @@ export default function AppShell({
               <div className="hidden min-w-0 sm:block">{renderParcelPicker('bar')}</div>
               {score !== undefined && (
                 <span
-                  className={`chip h-9 shrink-0 rounded-[9px] px-2.5 ${scoreTone}`}
+                  className={`chip h-9 shrink-0 rounded-[10px] px-2.5 ${scoreTone}`}
                   title="Score Vert de la parcelle sélectionnée"
                 >
                   <Glyph name="sprout" className="h-3.5 w-3.5" />
@@ -392,9 +389,9 @@ export default function AppShell({
                   onClick={() => setMenuOpen((value) => !value)}
                   aria-expanded={menuOpen}
                   aria-haspopup="menu"
-                  className="flex h-9 items-center gap-2 rounded-[9px] border border-[#e3e9f1] bg-white py-0 pl-1 pr-2 text-left transition-all duration-200 hover:-translate-y-px hover:border-[#cbd8e6] hover:shadow-md"
+                  className="flex h-9 items-center gap-2 rounded-[10px] border border-[#e6edf4] bg-white py-0 pl-1 pr-2 text-left shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-200 hover:-translate-y-px hover:border-[#c3d2e2] hover:shadow-[0_10px_22px_-16px_rgba(15,23,42,0.55)]"
                 >
-                  <span className="grid h-7 w-7 place-items-center rounded-[6px] bg-forest-700 text-[11px] font-bold text-white">
+                  <span className="grid h-7 w-7 place-items-center rounded-[8px] bg-forest-700 text-[11px] font-bold text-white">
                     {initialsOf(account.name)}
                   </span>
                   <span className="hidden min-w-0 lg:block">
@@ -419,7 +416,7 @@ export default function AppShell({
                     />
                     <div
                       role="menu"
-                      className="absolute right-0 top-[calc(100%+8px)] z-[1001] w-[268px] animate-pop overflow-hidden rounded-[12px] border border-[#e3e9f1] bg-white shadow-lift"
+                      className="absolute right-0 top-[calc(100%+8px)] z-[1001] w-[268px] animate-pop overflow-hidden rounded-[14px] border border-[#e6edf4] bg-white shadow-lift"
                     >
                       <div className="border-b border-[#eef3f8] bg-gradient-to-b from-white to-[#f8fafc] px-3.5 py-3">
                         <p className="text-[13px] font-semibold text-slateink-800">{account.name}</p>
@@ -506,10 +503,10 @@ export default function AppShell({
             className="absolute inset-0 bg-[#04120a]/55 backdrop-blur-[2px]"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 flex w-[286px] max-w-[86vw] flex-col overflow-y-auto rounded-r-[16px] bg-[#08210f] px-2.5 py-3 shadow-[8px_0_40px_rgba(4,18,10,0.45)] animate-rise scroll-thin-dark">
+          <div className="absolute inset-y-0 left-0 flex w-[286px] max-w-[86vw] flex-col overflow-y-auto rounded-r-[18px] bg-forest-900 px-2.5 py-3 shadow-[8px_0_40px_rgba(4,18,10,0.45)] animate-rise scroll-thin-dark">
             <div className="flex items-center justify-between px-1.5 pb-3">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-[9px] bg-white/95">
+                <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-[10px] bg-white/95">
                   <img
                     src="./agritwin-logo.webp"
                     alt="Emblème AgriTwin"
@@ -527,7 +524,7 @@ export default function AppShell({
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Fermer"
-                className="grid h-8 w-8 place-items-center rounded-[7px] text-white/60 transition hover:bg-white/10 hover:text-white"
+                className="grid h-8 w-8 place-items-center rounded-[9px] text-white/60 transition hover:bg-white/10 hover:text-white"
               >
                 <Glyph name="close" className="h-4 w-4" />
               </button>
@@ -541,7 +538,7 @@ export default function AppShell({
                 <button
                   type="button"
                   onClick={onOpenDemo}
-                  className="flex w-full items-center gap-2 rounded-[9px] border border-[#4ade80]/25 bg-[#4ade80]/10 px-2.5 py-2 text-[12px] font-semibold text-[#bbf7d0] transition hover:border-[#4ade80]/45 hover:bg-[#4ade80]/15"
+                  className="flex w-full items-center gap-2 rounded-[10px] border border-[#4ade80]/25 bg-[#4ade80]/10 px-2.5 py-2 text-[12px] font-semibold text-[#bbf7d0] transition hover:border-[#4ade80]/45 hover:bg-[#4ade80]/15"
                 >
                   <Glyph name="play" className="h-3.5 w-3.5" />
                   Démo guidée

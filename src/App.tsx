@@ -326,7 +326,7 @@ function SourceBadge({ simulation }: { simulation: boolean }) {
 
 function InfoTile({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-[8px] border border-[#eef3f8] bg-white/70 px-3 py-2">
+    <div className="rounded-[10px] border border-[#eef3f8] bg-white/70 px-3 py-2">
       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
       <p className="mt-0.5 text-[13px] font-semibold leading-snug text-slateink-800 sm:text-sm">
         {value}
@@ -1176,7 +1176,7 @@ export default function App() {
                 <p className="mt-0.5 text-[12px] leading-relaxed text-slate-500">
                   Suivi des intrants déclarés, en remplacement des capteurs NPK.
                 </p>
-                <div className="mt-3 border border-[#dde5ee] bg-[#f8fafc] p-3.5">
+                <div className="mt-3 rounded-xl border border-[#eef3f8] bg-[#fbfdfc] p-3.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                       Azote apporté
@@ -1189,7 +1189,7 @@ export default function App() {
                       / {dataset.parcel.crop.nitrogenNeed} kg N/ha
                     </span>
                   </p>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden bg-[#e2e8f0]">
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e2e8f0]">
                     <div
                       className={`h-full ${nitrogenCoverage >= 85 ? 'bg-forest-500' : 'bg-[#d97706]'}`}
                       style={{ width: `${nitrogenCoverage}%` }}
@@ -1204,7 +1204,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="mt-2.5 border border-[#dde5ee] p-3">
+                <div className="mt-2.5 rounded-xl border border-[#eef3f8] p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                     Signalements phytosanitaires
                   </p>
@@ -1296,17 +1296,12 @@ export default function App() {
               />
               <section className="window">
                 <div className="window-head">
-                  <span className="window-dots">
-                    <span />
-                    <span />
-                    <span />
-                  </span>
                   <h2 className="window-title">Preuve d’intégrité</h2>
                   <span className="window-hint">SHA-256</span>
                 </div>
                 <div className="window-body space-y-3">
                   <div
-                    className={`flex items-start gap-2.5 rounded-[9px] border px-3 py-2.5 ${
+                    className={`flex items-start gap-2.5 rounded-[10px] border px-3 py-2.5 ${
                       chain?.valid
                         ? 'border-[#bbf7d0] bg-[#f0fdf4]'
                         : 'border-[#fecaca] bg-[#fef2f2]'
@@ -1444,7 +1439,7 @@ export default function App() {
                   >
                     <div className="flex items-start gap-3 p-3.5 sm:p-4">
                       <span
-                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-[8px] border ${tone}`}
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border ${tone}`}
                       >
                         <Glyph
                           name={critique ? 'alert' : vigilance ? 'info' : 'check'}
@@ -1479,11 +1474,6 @@ export default function App() {
 
             <section className="window">
               <div className="window-head">
-                <span className="window-dots">
-                  <span />
-                  <span />
-                  <span />
-                </span>
                 <h2 className="window-title">Actions recommandées</h2>
                 <span className="window-hint">ordre de priorité</span>
               </div>
@@ -1602,11 +1592,6 @@ export default function App() {
 
             <section className="window">
               <div className="window-head">
-                <span className="window-dots">
-                  <span />
-                  <span />
-                  <span />
-                </span>
                 <h2 className="window-title">Journal des blocs</h2>
                 <span className="window-hint">{dataset.records.length} relevés chaînés</span>
               </div>
@@ -1617,11 +1602,6 @@ export default function App() {
 
             <section className="window">
               <div className="window-head">
-                <span className="window-dots">
-                  <span />
-                  <span />
-                  <span />
-                </span>
                 <h2 className="window-title">Partage et conservation</h2>
               </div>
               <div className="window-body grid gap-2.5 sm:grid-cols-3">

@@ -19,11 +19,7 @@ export default function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="relative flex flex-wrap items-end justify-between gap-3 overflow-hidden rounded-[12px] border border-[#e3e9f1] bg-white/85 px-4 py-3 shadow-card backdrop-blur-sm sm:px-5 sm:py-4">
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-forest-500 via-forest-500/25 to-transparent"
-      />
+    <div className="relative flex flex-wrap items-end justify-between gap-3 overflow-hidden rounded-[16px] border border-[#e6edf4] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_38px_-30px_rgba(15,23,42,0.3)] transition-shadow duration-300 hover:shadow-[0_2px_4px_rgba(15,23,42,0.05),0_24px_44px_-28px_rgba(15,23,42,0.34)] sm:px-5 sm:py-5">
       <div className="min-w-0">
         <p className="eyebrow">{eyebrow}</p>
         <h1 className="mt-1 font-serif text-xl leading-tight text-slateink-800 sm:text-2xl lg:text-3xl">

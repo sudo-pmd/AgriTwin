@@ -156,7 +156,7 @@ export default function VoiceAssistant({ dataset, alerts, score }: VoiceAssistan
               key={code}
               type="button"
               onClick={() => setLanguage(code)}
-              className={`inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 text-xs font-bold ${
+              className={`inline-flex items-center gap-1.5 rounded-[9px] px-2.5 py-1 text-xs font-bold ${
                 language === code ? 'bg-white text-forest-700 shadow-sm' : 'text-slate-500'
               }`}
             >
