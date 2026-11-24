@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
 import { MapContainer, Marker, Polygon, Polyline, Popup, TileLayer, useMapEvents } from 'react-leaflet';
+import {
+  SAT_ATTRIBUTION,
+  SAT_MAX_NATIVE_ZOOM,
+  SAT_MAX_ZOOM,
+  SAT_TILES,
+} from '../../utils/mapTiles';
 import L from 'leaflet';
 import * as turf from '@turf/turf';
 import {
@@ -29,8 +35,6 @@ interface DrawnParcel {
   zones: ParcelZone[];
 }
 
-const SAT_TILES =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
 const STATUS_COLORS = { optimal: '#16a34a', vigilance: '#d97706', critique: '#dc2626' } as const;
 
@@ -248,9 +252,9 @@ export default function ParcelMap({ parcel, records }: ParcelMapProps) {
               type="button"
               onClick={() => setLayer(option.id)}
               aria-pressed={active}
-              className={`chip border transition ${
+              className={`chip chip-action border ${
                 active
-                  ? 'border-forest-700 bg-forest-700 text-white'
+                  ? 'border-forest-700 bg-forest-700 text-white shadow-sm'
                   : 'border-[#cbd5e1] bg-white text-slate-600 hover:border-forest-400'
               }`}
             >
@@ -278,8 +282,9 @@ export default function ParcelMap({ parcel, records }: ParcelMapProps) {
         >
           <TileLayer
             url={SAT_TILES}
-            attribution="Imagerie &copy; Esri, Maxar, Earthstar Geographics"
-            maxZoom={19}
+            attribution={SAT_ATTRIBUTION}
+            maxZoom={SAT_MAX_ZOOM}
+            maxNativeZoom={SAT_MAX_NATIVE_ZOOM}
           />
           <MapInteractions drawing={drawing} onAddPoint={(point) => setDraft((p) => [...p, point])} onFinish={finishDrawing} />
 

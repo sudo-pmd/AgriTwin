@@ -21,7 +21,7 @@ export default {
           700: '#1e293b',
         },
         tech: '#0284c7',
-        line: '#dde5ee',
+        line: '#e3e9f1',
       },
       fontFamily: {
         sans: ['Public Sans', 'Segoe UI', 'system-ui', 'sans-serif'],
@@ -30,18 +30,21 @@ export default {
       },
       borderRadius: {
         none: '0',
-        sm: '2px',
-        DEFAULT: '3px',
-        md: '4px',
-        lg: '5px',
-        xl: '6px',
-        '2xl': '8px',
-        '3xl': '10px',
+        sm: '4px',
+        DEFAULT: '6px',
+        md: '8px',
+        lg: '10px',
+        xl: '12px',
+        '2xl': '16px',
+        '3xl': '20px',
         full: '9999px',
       },
       boxShadow: {
-        card: 'none',
-        lift: '0 18px 40px -24px rgba(15, 23, 42, 0.35)',
+        card: '0 1px 2px rgba(16, 32, 24, 0.04), 0 14px 30px -22px rgba(16, 32, 24, 0.35)',
+        window:
+          '0 1px 2px rgba(16, 32, 24, 0.05), 0 18px 38px -26px rgba(16, 32, 24, 0.42)',
+        lift: '0 2px 5px rgba(16, 32, 24, 0.06), 0 26px 48px -28px rgba(16, 32, 24, 0.5)',
+        inset: 'inset 0 1px 2px rgba(16, 32, 24, 0.06)',
       },
       keyframes: {
         equalize: {
@@ -52,10 +55,23 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.45' },
         },
+        rise: {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        pop: {
+          from: { opacity: '0', transform: 'translateY(-4px) scale(0.985)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+      },
+      transitionTimingFunction: {
+        smooth: 'cubic-bezier(0.22, 0.7, 0.3, 1)',
       },
       animation: {
         equalize: 'equalize 0.9s ease-in-out infinite',
         pulseSoft: 'pulseSoft 1.8s ease-in-out infinite',
+        rise: 'rise 0.3s cubic-bezier(0.22, 0.7, 0.3, 1) both',
+        pop: 'pop 0.16s ease-out both',
       },
     },
   },

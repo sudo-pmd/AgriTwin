@@ -165,7 +165,7 @@ export default function IoTSimulatorDrawer({
                 type="button"
                 disabled={pending}
                 onClick={() => (action.kind === 'reset' ? onReset() : onInject(action.kind))}
-                className={`group flex w-full items-start gap-3 rounded-xl border bg-white p-3.5 text-left transition disabled:opacity-60 ${action.tone}`}
+                className={`group flex w-full items-start gap-3 rounded-xl border bg-white p-3.5 text-left transition-all duration-200 hover:-translate-y-[1px] hover:shadow-sm active:translate-y-0 disabled:opacity-60 ${action.tone}`}
               >
                 <span className={`mt-0.5 rounded-lg p-2 ${action.iconTone}`}>
                   <Icon className="h-4 w-4" />

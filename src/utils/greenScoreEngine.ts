@@ -9,6 +9,30 @@ export const MOISTURE_MIN = 20;
 export const MOISTURE_MAX = 35;
 export const SATELLITE_TOLERANCE = 15;
 
+/** Pondérations du Score Vert, sur 100 points. */
+export const SCORE_WEIGHTS = {
+  water: 35,
+  vegetation: 25,
+  soil: 20,
+  integrity: 20,
+} as const;
+
+export const ELIGIBLE_THRESHOLD = 75;
+export const REVIEW_THRESHOLD = 50;
+
+/** Barème de la composante sol, en points. */
+export const SOIL_POINTS = {
+  optimal: SCORE_WEIGHTS.soil,
+  partial: 14,
+  degraded: 7,
+} as const;
+export const SOIL_EC_OPTIMAL = 1.4;
+export const SOIL_EC_TOLERATED = 2.0;
+export const SOIL_PH_MIN = 6.0;
+export const SOIL_PH_MAX = 7.5;
+/** Conversion NDVI → points, avant plafonnement par le poids de la composante. */
+export const NDVI_TO_POINTS = 32;
+
 export interface GreenScoreInput {
   records: TelemetryRecord[];
   ndvi: number;
@@ -25,7 +49,7 @@ export function waterScore(records: TelemetryRecord[]): { points: number; daysIn
     (r) => r.moisture15 >= MOISTURE_MIN && r.moisture15 <= MOISTURE_MAX,
   ).length;
   return {
-    points: Math.round((35 * daysInRange) / records.length),
+    points: Math.round((SCORE_WEIGHTS.water * daysInRange) / records.length),
     daysInRange,
     total: records.length,
   };
@@ -33,14 +57,14 @@ export function waterScore(records: TelemetryRecord[]): { points: number; daysIn
 
 /** C_veg — vigueur végétative (max 25). */
 export function vegetationScore(ndvi: number): number {
-  return Math.min(25, Math.round(ndvi * 32));
+  return Math.min(SCORE_WEIGHTS.vegetation, Math.round(ndvi * NDVI_TO_POINTS));
 }
 
 /** C_sol — santé et salinité du sol (max 20). */
 export function soilScore(ec: number, ph: number): number {
-  if (ec <= 1.4 && ph >= 6.0 && ph <= 7.5) return 20;
-  if (ec <= 2.0) return 14;
-  return 7;
+  if (ec <= SOIL_EC_OPTIMAL && ph >= SOIL_PH_MIN && ph <= SOIL_PH_MAX) return SOIL_POINTS.optimal;
+  if (ec <= SOIL_EC_TOLERATED) return SOIL_POINTS.partial;
+  return SOIL_POINTS.degraded;
 }
 
 export function satelliteGap(record: TelemetryRecord): number {
@@ -50,7 +74,7 @@ export function satelliteGap(record: TelemetryRecord): number {
 /** C_integrite — intégrité physique et cryptographique (max 20, sinon 0). */
 export function integrityScore(record: TelemetryRecord, chainValid: boolean): number {
   const coherent = satelliteGap(record) <= SATELLITE_TOLERANCE;
-  return chainValid && record.sealOk && coherent ? 20 : 0;
+  return chainValid && record.sealOk && coherent ? SCORE_WEIGHTS.integrity : 0;
 }
 
 export function computeGreenScore(input: GreenScoreInput): GreenScoreResult {
@@ -69,7 +93,8 @@ export function computeGreenScore(input: GreenScoreInput): GreenScoreResult {
     vegetation,
     soil,
     integrity,
-    profile: total >= 75 ? 'A' : total >= 50 ? 'B' : 'C',
+    profile:
+      total >= ELIGIBLE_THRESHOLD ? 'A' : total >= REVIEW_THRESHOLD ? 'B' : 'C',
     fraudDetected: gap > SATELLITE_TOLERANCE,
     satelliteGap: gap,
     chainValid: input.chainValid,
@@ -90,7 +115,7 @@ export function creditVerdict(score: GreenScoreResult, frozen: boolean): CreditV
       rate: 'Taux dégradé — dossier en revue',
     };
   }
-  if (score.fraudDetected || !score.chainValid || score.total < 50) {
+  if (score.fraudDetected || !score.chainValid || score.total < REVIEW_THRESHOLD) {
     return {
       decision: 'suspendu',
       badge: 'DÉCAISSEMENT SUSPENDU — AUDIT REQUIS',
@@ -100,7 +125,7 @@ export function creditVerdict(score: GreenScoreResult, frozen: boolean): CreditV
       rate: 'Aucun taux accordé',
     };
   }
-  if (score.total >= 75) {
+  if (score.total >= ELIGIBLE_THRESHOLD) {
     return {
       decision: 'eligible',
       badge: 'ÉLIGIBLE — DÉBLOCAGE TRANCHE 2 AUTORISÉ',

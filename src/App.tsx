@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Glyph from './components/ui/Glyph';
-import TopNavbar, { type NavItem } from './components/layout/TopNavbar';
+import PageHeader from './components/ui/PageHeader';
+import AppShell, { type NavSection } from './components/layout/AppShell';
 import IoTSimulatorDrawer from './components/layout/IoTSimulatorDrawer';
 import ParcelMap from './components/module1-map/ParcelMap';
 import KpiCards from './components/module2-monitoring/KpiCards';
@@ -14,6 +15,9 @@ import LenderPortal from './components/module4-finance/LenderPortal';
 import ParcelSetup from './components/parcel/ParcelSetup';
 import VerificationQueue from './components/verification/VerificationQueue';
 import AuthScreen from './components/auth/AuthScreen';
+import ScoreMethodology from './components/methodology/ScoreMethodology';
+import GuidedDemo from './components/demo/GuidedDemo';
+import { DEMO_PARCEL_ID, DEMO_STEPS, createDemoParcel } from './demo/guidedDemo';
 import {
   buildConfigDataset,
   buildSeedDatasets,
@@ -32,10 +36,21 @@ import {
 } from './utils/greenScoreEngine';
 import { signAppend, signRecords, verifyChain, type ChainVerification } from './utils/cryptoChain';
 import { generateCreditPdf } from './utils/pdfGenerator';
+import { exportEvidenceBundle } from './utils/evidenceBundle';
+import verifierHtml from './verification/verifier.html?raw';
 import { formatDate, formatNumber } from './utils/format';
-import { ensureAccounts, persistSession, restoreSession, signOut, type Account } from './auth/accounts';
 import {
+  ensureAccounts,
+  persistSession,
+  resetAccounts,
+  restoreSession,
+  signOut,
+  type Account,
+} from './auth/accounts';
+import {
+  clearParcelStorage,
   loadParcelConfigs,
+  purgeOrphanDocuments,
   upsertParcelConfig,
 } from './storage/parcels';
 import type {
@@ -50,18 +65,91 @@ import type {
   VerificationStatus,
 } from './types/agritwin';
 
-const EXPLOITANT_NAV: NavItem[] = [
-  { key: 'parcel', label: 'Ma parcelle', short: 'Parcelle', glyph: 'parcel' },
-  { key: 'map', label: 'Carte', short: 'Carte', glyph: 'map' },
-  { key: 'monitoring', label: 'Capteurs', short: 'Capteurs', glyph: 'sensor' },
-  { key: 'simulator', label: 'Simulateur', short: 'Simul.', glyph: 'chart' },
-  { key: 'score', label: 'Score Vert', short: 'Score', glyph: 'sprout' },
+const EXPLOITANT_SECTIONS: NavSection[] = [
+  {
+    key: 'parcel',
+    label: 'Ma parcelle',
+    glyph: 'parcel',
+    hint: 'Déclaration & pièces',
+    items: [
+      {
+        key: 'parcel',
+        label: 'Déclaration & pièces',
+        glyph: 'parcel',
+        hint: 'GPS, pièces justificatives, certification',
+      },
+    ],
+  },
+  {
+    key: 'exploitation',
+    label: 'Exploitation',
+    glyph: 'map',
+    hint: 'Carte, capteurs, alertes',
+    items: [
+      { key: 'map', label: 'Carte & zones', glyph: 'map', hint: 'Jumeau numérique de la parcelle' },
+      { key: 'monitoring', label: 'Surveillance', glyph: 'sensor', hint: 'Sol, microclimat, bilan minéral' },
+      { key: 'alerts', label: 'Alertes', glyph: 'alert', hint: 'Diagnostics et actions correctives' },
+    ],
+  },
+  {
+    key: 'decision',
+    label: 'Décision',
+    glyph: 'flask',
+    hint: 'Simulateur de rendement',
+    items: [
+      { key: 'simulator', label: 'Simulateur', glyph: 'chart', hint: 'Scénarios agronomiques' },
+    ],
+  },
+  {
+    key: 'finance',
+    label: 'Financement',
+    glyph: 'sprout',
+    hint: 'Score Vert et preuve',
+    items: [
+      { key: 'score', label: 'Score Vert', glyph: 'sprout', hint: 'Dossier de crédit et consentement' },
+      { key: 'audit', label: 'Preuve & audit', glyph: 'shieldCheck', hint: 'Journal des blocs SHA-256' },
+    ],
+  },
 ];
 
-const FINANCEUR_NAV: NavItem[] = [{ key: 'portal', label: 'Dossiers', glyph: 'building' }];
-const VERIFICATEUR_NAV: NavItem[] = [
-  { key: 'verification', label: 'Vérifications', glyph: 'shieldCheck' },
+const FINANCEUR_SECTIONS: NavSection[] = [
+  {
+    key: 'credit',
+    label: 'Portefeuille',
+    glyph: 'building',
+    hint: 'Dossiers certifiés',
+    items: [
+      { key: 'portal', label: 'Dossiers', glyph: 'building', hint: 'Consultation et export des dossiers' },
+    ],
+  },
 ];
+
+const VERIFICATEUR_SECTIONS: NavSection[] = [
+  {
+    key: 'backoffice',
+    label: 'Back-office',
+    glyph: 'shieldCheck',
+    hint: 'File de vérification',
+    items: [
+      { key: 'verification', label: 'Vérifications', glyph: 'shieldCheck', hint: 'Contrôle des pièces déposées' },
+    ],
+  },
+];
+
+const METHODOLOGY_SECTION: NavSection = {
+  key: 'reference',
+  label: 'Référentiel',
+  glyph: 'file',
+  hint: 'Méthodologie & limites',
+  items: [
+    {
+      key: 'methodology',
+      label: 'Méthodologie & limites',
+      glyph: 'file',
+      hint: 'Formule, seuils, provenance des données',
+    },
+  ],
+};
 
 const VERIFICATION_LABEL: Record<VerificationStatus, string> = {
   brouillon: 'Brouillon',
@@ -236,37 +324,9 @@ function SourceBadge({ simulation }: { simulation: boolean }) {
   );
 }
 
-function PageHeader({
-  eyebrow,
-  title,
-  description,
-  badges,
-  actions,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  badges?: React.ReactNode;
-  actions?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#dde5ee] pb-3">
-      <div className="min-w-0">
-        <p className="eyebrow">{eyebrow}</p>
-        <h1 className="mt-1 font-serif text-2xl leading-tight text-slateink-800 sm:text-3xl">{title}</h1>
-        <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-slate-500">{description}</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {badges}
-        {actions}
-      </div>
-    </div>
-  );
-}
-
 function InfoTile({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="border-l-2 border-[#dde5ee] px-3 py-2">
+    <div className="rounded-[8px] border border-[#eef3f8] bg-white/70 px-3 py-2">
       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
       <p className="mt-0.5 text-[13px] font-semibold leading-snug text-slateink-800 sm:text-sm">
         {value}
@@ -281,14 +341,50 @@ export default function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [configs, setConfigs] = useState<ParcelConfig[]>(() => loadParcelConfigs());
   const [datasets, setDatasets] = useState<Record<string, ParcelDataset> | null>(null);
+
+  // Aucun fichier IndexedDB ne doit survivre à la déclaration qui le référence.
+  useEffect(() => {
+    const keep = loadParcelConfigs().flatMap((config) =>
+      config.documents.map((document) => document.id),
+    );
+    void purgeOrphanDocuments(keep).catch(() => {
+      // Stockage local indisponible (navigation privée) : on n'interrompt pas l'app.
+    });
+  }, []);
   const [parcelId, setParcelId] = useState('PARC-BMB-001');
   const [tab, setTab] = useState('map');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportedBundle, setExportedBundle] = useState<string | null>(null);
   const [chains, setChains] = useState<Record<string, ChainVerification>>({});
   const [error, setError] = useState<string | null>(null);
+  const [demoIndex, setDemoIndex] = useState<number | null>(null);
+  const [demoBusy, setDemoBusy] = useState(false);
+
+  // Changer de vue ou de parcelle repart du haut : sinon le nouveau contenu
+  // apparaît sous l'en-tête collant, sans son titre.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [tab, parcelId]);
+
+  // Chaque étape de la démo force le rôle et la vue, sans passer par les menus.
+  useEffect(() => {
+    if (demoIndex === null || !accounts) return;
+    const step = DEMO_STEPS[demoIndex];
+    const target = accounts.find(
+      (item) => item.role === step.role && item.id.startsWith('acc-demo-'),
+    );
+    if (target && target.id !== account?.id) {
+      persistSession(target);
+      setAccount(target);
+    }
+    setTab(step.tab);
+    setParcelId(DEMO_PARCEL_ID);
+    setError(null);
+  }, [demoIndex]);
 
   useEffect(() => {
     let alive = true;
@@ -397,6 +493,45 @@ export default function App() {
     return `Signalement ${recent.type} (${recent.severity}) il y a ${days} jour(s) : la baisse de NDVI associée est traitée comme un aléa sanitaire et non comme une négligence d’irrigation.`;
   }, [dataset]);
 
+  /** Réinitialisation complète : comptes, session, déclarations, pièces. */
+  const resetAll = async () => {
+    const fresh = await resetAccounts();
+    await clearParcelStorage();
+    setAccounts(fresh);
+    setConfigs([]);
+    setChains({});
+    setDrawerOpen(false);
+    setJournalOpen(false);
+    setPending(false);
+    setError(null);
+    setTab('map');
+    setParcelId('PARC-BMB-001');
+    const exploitant = fresh.find((item) => item.role === 'exploitant');
+    if (exploitant) {
+      persistSession(exploitant);
+      setAccount(exploitant);
+    }
+  };
+
+  const startDemo = async () => {
+    const hasOwnData = configs.some((config) => config.id !== DEMO_PARCEL_ID);
+    if (
+      hasOwnData &&
+      !window.confirm(
+        'La démo guidée réinitialise tous les comptes et toutes les données locales (parcelles, pièces déposées). Continuer ?',
+      )
+    ) {
+      return;
+    }
+    setDemoBusy(true);
+    try {
+      await resetAll();
+      setDemoIndex(0);
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
   if (!accounts) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#f8fafc] px-6">
@@ -423,6 +558,7 @@ export default function App() {
           setAccount(next);
           setTab(next.role === 'verificateur' ? 'verification' : next.role === 'financeur' ? 'portal' : 'map');
         }}
+        onStartDemo={() => void startDemo()}
       />
     );
   }
@@ -441,8 +577,16 @@ export default function App() {
   }
 
   const role = account.role;
-  const nav = role === 'verificateur' ? VERIFICATEUR_NAV : role === 'financeur' ? FINANCEUR_NAV : EXPLOITANT_NAV;
-  const activeTab = role === 'verificateur' ? 'verification' : role === 'financeur' ? 'portal' : tab;
+  const roleSections =
+    role === 'verificateur'
+      ? VERIFICATEUR_SECTIONS
+      : role === 'financeur'
+        ? FINANCEUR_SECTIONS
+        : EXPLOITANT_SECTIONS;
+  const sections = [...roleSections, METHODOLOGY_SECTION];
+  const activeKey = sections.some((section) => section.items.some((item) => item.key === tab))
+    ? tab
+    : sections[0].items[0].key;
 
   const parcels = availableParcels;
   const latest = dataset?.records[dataset.records.length - 1];
@@ -601,19 +745,92 @@ export default function App() {
     }
   };
 
+  /** Archive autoportante : PDF + preuve.json + vérificateur hors ligne. */
+  const exportBundle = async () => {
+    if (exporting || !dataset || !score || !verdict || !assurance) return;
+    const lastRecord = dataset.records[dataset.records.length - 1];
+    setExporting(true);
+    setError(null);
+    setExportedBundle(null);
+    try {
+      const projection = projectYield(dataset.parcel, lastRecord.ec, DEFAULT_PARAMS);
+      const pdf = await generateCreditPdf(
+        {
+          parcel: dataset.parcel,
+          dataset,
+          score,
+          verdict,
+          assurance: { label: assurance.label, detail: assurance.detail },
+          projection,
+          chainHash: chain?.globalHash ?? '',
+        },
+        { download: false },
+      );
+      const result = await exportEvidenceBundle({
+        dataset,
+        score,
+        verdict,
+        assurance: { label: assurance.label, detail: assurance.detail },
+        pdf: { filename: pdf.filename, bytes: pdf.bytes },
+        verification: dataset.parcel.verification,
+        verifierHtml,
+      });
+      setExportedBundle(result.filename);
+    } catch (bundleError) {
+      console.error(bundleError);
+      setError(
+        'L’archive vérifiable n’a pas pu être générée. Vérifiez que le navigateur autorise les téléchargements.',
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  /** Modifier une déclaration déjà contrôlée la renvoie en brouillon. */
   const saveConfig = (config: ParcelConfig) => {
-    setConfigs(upsertParcelConfig(config));
-    setParcelId(config.id);
+    const reviewed =
+      config.verification.status === 'soumis' || config.verification.status === 'verifie';
+    const next: ParcelConfig = reviewed
+      ? {
+          ...config,
+          documents: config.documents.map((document) => ({
+            ...document,
+            status: 'en_attente' as const,
+            note: undefined,
+          })),
+          verification: { status: 'brouillon' },
+        }
+      : config;
+    setConfigs(upsertParcelConfig(next));
+    setParcelId(next.id);
   };
 
   const submitConfig = (config: ParcelConfig) => {
-    setConfigs(upsertParcelConfig(config));
-    setParcelId(config.id);
+    const next: ParcelConfig = {
+      ...config,
+      documents: config.documents.map((document) => ({
+        ...document,
+        status: 'en_attente' as const,
+        note: undefined,
+      })),
+      verification: {
+        status: 'soumis',
+        submittedAt: new Date().toISOString(),
+      },
+    };
+    setConfigs(upsertParcelConfig(next));
+    setParcelId(next.id);
   };
 
-  const decideParcel = (id: string, status: VerificationStatus, note: string) => {
+  /** Décision de contrôle ; refuse un dossier disparu ou qui n'est plus soumis. */
+  const decideParcel = (id: string, status: VerificationStatus, note: string): boolean => {
     const target = configs.find((config) => config.id === id);
-    if (!target) return;
+    if (!target || target.verification.status !== 'soumis') {
+      setError(
+        'Ce dossier n’est plus en attente de contrôle : il a été retiré ou modifié par son titulaire.',
+      );
+      return false;
+    }
     const next: ParcelConfig = {
       ...target,
       documents:
@@ -635,6 +852,71 @@ export default function App() {
       },
     };
     setConfigs(upsertParcelConfig(next));
+    setError(null);
+    return true;
+  };
+
+  const demoParcel = configs.find((config) => config.id === DEMO_PARCEL_ID);
+
+  const restartDemo = async () => {
+    setDemoBusy(true);
+    try {
+      await resetAll();
+      setDemoIndex(0);
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
+  const runDemoStep = async () => {
+    if (demoIndex === null) return;
+    const step = DEMO_STEPS[demoIndex];
+    setDemoBusy(true);
+    try {
+      if (step.action === 'create' && accounts) {
+        const exploitant = accounts.find((item) => item.role === 'exploitant');
+        if (exploitant && !configs.some((config) => config.id === DEMO_PARCEL_ID)) {
+          const config = await createDemoParcel(exploitant);
+          setConfigs(upsertParcelConfig(config));
+          setParcelId(config.id);
+        }
+      }
+
+      if (step.action === 'submit' && demoParcel) {
+        const status = demoParcel.verification.status;
+        if (status !== 'soumis' && status !== 'verifie') submitConfig(demoParcel);
+      }
+
+      if (step.action === 'certify' && demoParcel?.verification.status === 'soumis') {
+        const decided = decideParcel(
+          DEMO_PARCEL_ID,
+          'verifie',
+          'Contour recoupé avec l’orthophoto, pièces d’identité et titre foncier conformes.',
+        );
+        if (!decided) return;
+      }
+
+      if (step.action === 'fraud') {
+        if (!dataset || dataset.parcel.id !== DEMO_PARCEL_ID) {
+          setError(
+            'La parcelle de démonstration n’est pas encore sélectionnée : revenez à l’étape précédente.',
+          );
+          return;
+        }
+        if (!score?.fraudDetected) await inject('fraud');
+      }
+
+      setDemoIndex((current) => {
+        if (current === null) return null;
+        return current >= DEMO_STEPS.length - 1 ? null : current + 1;
+      });
+    } catch {
+      setError(
+        'La démonstration n’a pas pu se poursuivre : le stockage local du navigateur est indisponible.',
+      );
+    } finally {
+      setDemoBusy(false);
+    }
   };
 
   const appliedNitrogen = dataset
@@ -647,29 +929,29 @@ export default function App() {
   const verification = dataset?.parcel.verification;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <TopNavbar
+    <div className="min-h-screen">
+      <AppShell
         account={account}
+        sections={sections}
+        activeKey={activeKey}
+        onNavigate={setTab}
         parcels={role === 'verificateur' ? [] : parcels}
         selectedParcelId={parcelId}
         onSelectParcel={(id) => {
           setParcelId(id);
           setError(null);
         }}
-        nav={nav}
-        activeTab={activeTab}
-        onTab={setTab}
         onOpenSimulator={role === 'exploitant' ? () => setDrawerOpen(true) : undefined}
+        onOpenDemo={() => void startDemo()}
         score={role === 'verificateur' ? undefined : score?.total}
         simulationActive={Boolean(dataset?.simulationActive)}
-        integrityOk={Boolean(score && score.integrity > 0)}
+        integrityOk={Boolean(chain?.valid)}
         onSignOut={() => {
           signOut();
           setAccount(null);
         }}
-      />
-
-      <main className="mx-auto w-full max-w-[1440px] px-4 py-4 lg:px-8">
+      >
+      <main key={activeKey} className="mx-auto w-full max-w-[1440px] animate-rise px-4 py-5 lg:px-7 lg:py-6">
         {error && (
           <div className="mb-3 flex items-start gap-2 border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[12px] font-semibold text-[#b91c1c]">
             <Glyph name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -677,11 +959,28 @@ export default function App() {
           </div>
         )}
 
-        {role === 'verificateur' && (
+        {tab === 'methodology' && (
+          <div className="space-y-4">
+            <PageHeader
+              eyebrow="Référentiel · Transparence"
+              title="Méthodologie & limites du Score Vert"
+              description="Formule appliquée, pondérations, seuils de décision et provenance exacte de chaque donnée — y compris ce que le score ne prétend pas prouver."
+              badges={
+                <span className="chip">
+                  <Glyph name="file" className="h-3.5 w-3.5" />
+                  Version 1.0 · 2026
+                </span>
+              }
+            />
+            <ScoreMethodology />
+          </div>
+        )}
+
+        {role === 'verificateur' && tab !== 'methodology' && (
           <VerificationQueue account={account} configs={configs} onDecision={decideParcel} />
         )}
 
-        {role === 'financeur' && dataset && score && verdict && (
+        {role === 'financeur' && tab !== 'methodology' && dataset && score && verdict && (
           <div className="space-y-4">
             <PageHeader
               eyebrow={`Portail financeur · ${account.organisation}`}
@@ -689,6 +988,16 @@ export default function App() {
               description={`Consultation du dossier certifié de ${dataset.parcel.owner} — ${dataset.parcel.shortName}. Le partage reste soumis au consentement de l’exploitant.`}
               badges={<SourceBadge simulation={dataset.simulationActive} />}
             />
+            {exportedBundle && (
+              <div className="flex items-start gap-2 border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2 text-[12px] font-semibold text-forest-700">
+                <Glyph name="shieldCheck" className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Archive vérifiable générée : <span className="font-mono text-[11.5px]">{exportedBundle}</span>
+                  . Extrayez-la et ouvrez <span className="font-mono">verifier.html</span> pour
+                  recalculer la preuve hors ligne.
+                </span>
+              </div>
+            )}
             <LenderPortal
               parcel={dataset.parcel}
               dataset={dataset}
@@ -696,6 +1005,8 @@ export default function App() {
               verdict={verdict}
               onDownload={downloadPdf}
               downloading={downloading}
+              onExportBundle={exportBundle}
+              exporting={exporting}
             />
           </div>
         )}
@@ -726,7 +1037,7 @@ export default function App() {
           />
         )}
 
-        {role === 'exploitant' && tab !== 'parcel' && !dataset && (
+        {role === 'exploitant' && tab !== 'parcel' && tab !== 'methodology' && !dataset && (
           <div className="border border-dashed border-[#cbd5e1] bg-white px-6 py-14 text-center">
             <Glyph name="parcel" className="mx-auto h-7 w-7 text-slate-300" />
             <p className="mt-3 font-serif text-xl text-slateink-800">Aucune parcelle déclarée</p>
@@ -970,7 +1281,7 @@ export default function App() {
               }
             />
 
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-2">
               <GreenScoreCard
                 score={score}
                 parcel={dataset.parcel}
@@ -983,7 +1294,78 @@ export default function App() {
                 ph={latest.ph}
                 pestNote={pestNote}
               />
-              <CryptoAuditTable records={dataset.records} />
+              <section className="window">
+                <div className="window-head">
+                  <span className="window-dots">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                  <h2 className="window-title">Preuve d’intégrité</h2>
+                  <span className="window-hint">SHA-256</span>
+                </div>
+                <div className="window-body space-y-3">
+                  <div
+                    className={`flex items-start gap-2.5 rounded-[9px] border px-3 py-2.5 ${
+                      chain?.valid
+                        ? 'border-[#bbf7d0] bg-[#f0fdf4]'
+                        : 'border-[#fecaca] bg-[#fef2f2]'
+                    }`}
+                  >
+                    <Glyph
+                      name={chain?.valid ? 'shieldCheck' : 'shieldAlert'}
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${
+                        chain?.valid ? 'text-forest-700' : 'text-[#b91c1c]'
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <p
+                        className={`text-[12.5px] font-semibold ${
+                          chain?.valid ? 'text-forest-700' : 'text-[#b91c1c]'
+                        }`}
+                      >
+                        {chain?.valid ? 'Chaîne de mesures intègre' : 'Chaîne à vérifier'}
+                      </p>
+                      <p className="mt-0.5 break-all font-mono text-[10.5px] leading-relaxed text-slate-500">
+                        {chain ? `${chain.globalHash.slice(0, 24)}…` : 'Calcul de l’empreinte…'}
+                      </p>
+                    </div>
+                  </div>
+                  <ul className="divide-y divide-[#eef3f8] text-[12px] text-slate-600">
+                    <li className="flex items-center justify-between gap-2 py-1.5">
+                      <span>Blocs signés</span>
+                      <span className="num font-semibold text-slateink-800">
+                        {dataset.records.length}
+                      </span>
+                    </li>
+                    <li className="flex items-center justify-between gap-2 py-1.5">
+                      <span>Scellé du boîtier</span>
+                      <span
+                        className={`font-semibold ${
+                          latest.sealOk ? 'text-forest-700' : 'text-[#b91c1c]'
+                        }`}
+                      >
+                        {latest.sealOk ? 'Intact' : 'Rompu'}
+                      </span>
+                    </li>
+                    <li className="flex items-center justify-between gap-2 py-1.5">
+                      <span>Dernier relevé</span>
+                      <span className="font-mono text-[11px] text-slateink-800">
+                        {formatDate(latest.timestamp)}
+                      </span>
+                    </li>
+                  </ul>
+                  <button
+                    type="button"
+                    className="btn-secondary w-full"
+                    onClick={() => setTab('audit')}
+                  >
+                    <Glyph name="file" className="h-4 w-4" />
+                    Ouvrir le journal des blocs
+                    <Glyph name="arrowRight" className="ml-auto h-4 w-4" />
+                  </button>
+                </div>
+              </section>
             </div>
 
             <section className="card flex flex-wrap items-center justify-between gap-3 p-4 lg:px-5">
@@ -1002,17 +1384,351 @@ export default function App() {
             </section>
           </div>
         )}
+        {role === 'exploitant' && dataset && latest && tab === 'alerts' && (
+          <div className="space-y-4">
+            <PageHeader
+              eyebrow="Module 2 · Diagnostic"
+              title="Alertes et actions correctives"
+              description={`${dataset.parcel.shortName} · dernier relevé ${formatDate(
+                latest.timestamp,
+              )} · seuils de référence : humidité 20 %, air 35 °C, salinité 1,5 dS/m.`}
+              badges={<SourceBadge simulation={dataset.simulationActive} />}
+            />
+
+            <div className="grid grid-cols-3 gap-2.5 sm:max-w-md">
+              {[
+                {
+                  label: 'Critiques',
+                  value: alerts.filter((item) => item.severity === 'critique').length,
+                  tone: 'text-[#b91c1c]',
+                },
+                {
+                  label: 'Vigilances',
+                  value: alerts.filter((item) => item.severity === 'vigilance').length,
+                  tone: 'text-[#b45309]',
+                },
+                {
+                  label: 'Informations',
+                  value: alerts.filter((item) => item.severity === 'info').length,
+                  tone: 'text-forest-700',
+                },
+              ].map((entry) => (
+                <div key={entry.label} className="stat">
+                  <p className={`num text-2xl font-semibold ${entry.tone}`}>{entry.value}</p>
+                  <p className="mt-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                    {entry.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2.5">
+              {alerts.map((alert) => {
+                const critique = alert.severity === 'critique';
+                const vigilance = alert.severity === 'vigilance';
+                const tone = critique
+                  ? 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]'
+                  : vigilance
+                    ? 'border-[#fcd34d] bg-[#fffbeb] text-[#b45309]'
+                    : 'border-[#bbf7d0] bg-[#f0fdf4] text-forest-700';
+                return (
+                  <article
+                    key={alert.id}
+                    className={`window border-l-[3px] ${
+                      critique
+                        ? 'border-l-[#dc2626]'
+                        : vigilance
+                          ? 'border-l-[#d97706]'
+                          : 'border-l-[#16a34a]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 p-3.5 sm:p-4">
+                      <span
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-[8px] border ${tone}`}
+                      >
+                        <Glyph
+                          name={critique ? 'alert' : vigilance ? 'info' : 'check'}
+                          className="h-4 w-4"
+                        />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`chip ${tone}`}>{alert.severity}</span>
+                          <span className="font-mono text-[10px] text-slate-400">{alert.id}</span>
+                        </div>
+                        <h2 className="mt-1.5 font-serif text-[16px] leading-snug text-slateink-800 sm:text-[17px]">
+                          {alert.title}
+                        </h2>
+                        <p className="mt-1 text-[12.5px] leading-relaxed text-slate-600">
+                          {alert.message}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="chip normal-case tracking-normal">
+                            FR · {alert.voiceFr}
+                          </span>
+                          <span className="chip normal-case tracking-normal">
+                            WO · {alert.voiceWolof}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <section className="window">
+              <div className="window-head">
+                <span className="window-dots">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <h2 className="window-title">Actions recommandées</h2>
+                <span className="window-hint">ordre de priorité</span>
+              </div>
+              <div className="window-body grid gap-2.5 sm:grid-cols-3">
+                <button
+                  type="button"
+                  className="stat group text-left transition hover:border-[#bbf7d0] hover:bg-[#f7fdf9]"
+                  onClick={() => setTab('monitoring')}
+                >
+                  <Glyph name="droplet" className="h-4 w-4 text-tech" />
+                  <p className="mt-2 text-[12.5px] font-semibold text-slateink-800">
+                    Vérifier le bilan hydrique
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    Sondes 15/35 cm, pluviométrie et radar Sentinel-1.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  className="stat group text-left transition hover:border-[#bbf7d0] hover:bg-[#f7fdf9]"
+                  onClick={() => setTab('simulator')}
+                >
+                  <Glyph name="flask" className="h-4 w-4 text-forest-600" />
+                  <p className="mt-2 text-[12.5px] font-semibold text-slateink-800">
+                    Tester une irrigation
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    Chiffrer l’effet d’un apport sur le rendement et le Score Vert.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  className="stat group text-left transition hover:border-[#bbf7d0] hover:bg-[#f7fdf9]"
+                  onClick={() => setTab('audit')}
+                >
+                  <Glyph name="shieldCheck" className="h-4 w-4 text-forest-600" />
+                  <p className="mt-2 text-[12.5px] font-semibold text-slateink-800">
+                    Contrôler la preuve
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    Journal SHA-256 opposable en cas de litige de crédit.
+                  </p>
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {role === 'exploitant' && dataset && latest && tab === 'audit' && (
+          <div className="space-y-4">
+            <PageHeader
+              eyebrow="Module 4 · Preuve & audit"
+              title="Journal cryptographique de la parcelle"
+              description="Chaque relevé est signé en SHA-256 et chaîné au précédent : toute réécriture de l’historique casse la signature et invalide le dossier de crédit."
+              badges={
+                <>
+                  <span
+                    className={`chip ${
+                      chain?.valid
+                        ? 'border-[#bbf7d0] bg-[#f0fdf4] text-forest-700'
+                        : 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]'
+                    }`}
+                  >
+                    <Glyph
+                      name={chain?.valid ? 'shieldCheck' : 'shieldAlert'}
+                      className="h-3.5 w-3.5"
+                    />
+                    {chain?.valid ? 'Chaîne intègre' : 'Chaîne à vérifier'}
+                  </span>
+                  <SourceBadge simulation={dataset.simulationActive} />
+                </>
+              }
+              actions={
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={downloadPdf}
+                  disabled={downloading}
+                >
+                  <Glyph name="download" className="h-4 w-4" />
+                  {downloading ? 'Génération…' : 'Exporter le dossier PDF'}
+                </button>
+              }
+            />
+
+            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              <div className="stat">
+                <p className="eyebrow">Blocs signés</p>
+                <p className="num mt-1 text-lg font-semibold text-slateink-800">
+                  {dataset.records.length}
+                </p>
+              </div>
+              <div className="stat">
+                <p className="eyebrow">Scellé boîtier</p>
+                <p
+                  className={`mt-1 text-lg font-semibold ${
+                    latest.sealOk ? 'text-forest-700' : 'text-[#b91c1c]'
+                  }`}
+                >
+                  {latest.sealOk ? 'Intact' : 'Rompu'}
+                </p>
+              </div>
+              <div className="stat">
+                <p className="eyebrow">Dernier relevé</p>
+                <p className="mt-1 font-mono text-[13px] font-medium text-slateink-800">
+                  {formatDate(latest.timestamp)}
+                </p>
+              </div>
+              <div className="stat min-w-0">
+                <p className="eyebrow">Empreinte globale</p>
+                <p className="mt-1 truncate font-mono text-[13px] font-medium text-slateink-800">
+                  {chain ? `${chain.globalHash.slice(0, 10)}…` : 'Calcul…'}
+                </p>
+              </div>
+            </div>
+
+            <section className="window">
+              <div className="window-head">
+                <span className="window-dots">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <h2 className="window-title">Journal des blocs</h2>
+                <span className="window-hint">{dataset.records.length} relevés chaînés</span>
+              </div>
+              <div className="window-body window-body-flush">
+                <CryptoAuditTable records={dataset.records} />
+              </div>
+            </section>
+
+            <section className="window">
+              <div className="window-head">
+                <span className="window-dots">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <h2 className="window-title">Partage et conservation</h2>
+              </div>
+              <div className="window-body grid gap-2.5 sm:grid-cols-3">
+                <div className="stat">
+                  <p className="eyebrow">Consentement</p>
+                  <p className="mt-1 text-[12.5px] font-semibold text-slateink-800">
+                    {dataset.consent ? 'Partage autorisé' : 'Partage bloqué'}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    L’exploitant garde la main sur la transmission du dossier.
+                  </p>
+                </div>
+                <div className="stat">
+                  <p className="eyebrow">Base légale</p>
+                  <p className="mt-1 text-[12.5px] font-semibold text-slateink-800">
+                    Loi 2008-12 (CDP)
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    Données déclaratives et télémétrie certifiée du kit.
+                  </p>
+                </div>
+                <div className="stat">
+                  <p className="eyebrow">Traçabilité</p>
+                  <p className="mt-1 text-[12.5px] font-semibold text-slateink-800">
+                    {dataset.records.length} signatures
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                    Vérifiables hors ligne, sans service tiers payant.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
       </main>
 
-      <footer className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-2 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#dde5ee] pt-3 text-[11px] text-slate-500">
-          <p>AgriTwin — démonstrateur fonctionnel · Concours AKTIION 2026, École Polytechnique de Thiès.</p>
-          <p>
-            {dataset ? `${dataset.records.length} blocs SHA-256 · ` : ''}
-            Données Sentinel-1/2 simulées · aucun service payant requis.
-          </p>
+      <footer className="mx-auto w-full max-w-[1440px] px-4 pb-16 pt-2 sm:pb-6 lg:px-8">
+        <div className="border-t border-[#dde5ee] pt-4">
+          <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-5">
+            <div className="max-w-sm">
+              <div className="flex items-center gap-2">
+                <img src="./agritwin-logo.webp" alt="" className="h-6 w-6 object-contain" />
+                <span className="font-serif text-[15px] leading-none text-slateink-800">
+                  AgriTwin
+                </span>
+                <span className="chip border-[#bbf7d0] bg-[#f0fdf4] text-forest-700">Prototype</span>
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                Jumeau numérique de parcelle et Score Vert pour l’accès au financement rural.
+                Démonstrateur hors ligne : relevés Sentinel-1/2 simulés, aucun service payant.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-x-10 gap-y-4 text-[11px]">
+              <div>
+                <p className="eyebrow">Ressources</p>
+                <ul className="mt-1.5 space-y-1.5">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setTab('methodology')}
+                      className="link min-h-[32px] text-[11px] font-semibold"
+                    >
+                      Méthodologie du Score Vert
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      className="link min-h-[32px] text-[11px] font-semibold"
+                    >
+                      Revenir en haut
+                    </button>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <p className="eyebrow">Traçabilité</p>
+                <ul className="mt-1.5 space-y-1 text-slate-500">
+                  <li className="font-mono">
+                    {dataset ? `${dataset.records.length} blocs SHA-256` : 'Chaîne locale'}
+                  </li>
+                  <li>Sentinel-1/2 simulées</li>
+                  <li>Consentement — loi 2008-12 (CDP)</li>
+                </ul>
+              </div>
+              <div>
+                <p className="eyebrow">Version</p>
+                <ul className="mt-1.5 space-y-1 text-slate-500">
+                  <li>Prototype v1.0</li>
+                  <li>React · Vite · TypeScript</li>
+                  <li>Données stockées localement</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#eef3f8] pt-3 text-[10.5px] text-slate-400">
+            <p>© 2026 AgriTwin — École Polytechnique de Thiès. Tous droits réservés.</p>
+            <p className="font-mono uppercase tracking-[0.08em]">
+              Concours AKTIION 2026 · démonstrateur
+            </p>
+          </div>
         </div>
       </footer>
+      </AppShell>
 
       {role === 'exploitant' && dataset && latest && score && (
         <IoTSimulatorDrawer
@@ -1029,6 +1745,25 @@ export default function App() {
             records: dataset.records.length,
             lastInjection: dataset.lastInjection,
           }}
+        />
+      )}
+
+      {demoIndex !== null && (
+        <GuidedDemo
+          index={demoIndex}
+          total={DEMO_STEPS.length}
+          title={DEMO_STEPS[demoIndex].title}
+          description={DEMO_STEPS[demoIndex].description}
+          cta={DEMO_STEPS[demoIndex].cta}
+          hint={DEMO_STEPS[demoIndex].hint}
+          busy={demoBusy}
+          canBack={demoIndex > 0}
+          onNext={() => void runDemoStep()}
+          onBack={() =>
+            setDemoIndex((current) => (current === null ? null : Math.max(0, current - 1)))
+          }
+          onReset={() => void restartDemo()}
+          onExit={() => setDemoIndex(null)}
         />
       )}
 

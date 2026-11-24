@@ -29,6 +29,8 @@ interface LenderPortalProps {
   verdict: CreditVerdict;
   onDownload: () => void;
   downloading: boolean;
+  onExportBundle: () => void;
+  exporting: boolean;
 }
 
 const TONE_STYLES = {
@@ -67,6 +69,8 @@ export default function LenderPortal({
   verdict,
   onDownload,
   downloading,
+  onExportBundle,
+  exporting,
 }: LenderPortalProps) {
   const latest = dataset.records[dataset.records.length - 1];
   const assurance = assuranceStatus(dataset, score);
@@ -288,19 +292,39 @@ export default function LenderPortal({
         </section>
       </div>
 
-      <section className="card flex flex-wrap items-center justify-between gap-3 p-4 lg:px-5">
-        <div className="flex items-start gap-2 text-xs text-slate-600">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-forest-600" />
-          <p className="max-w-2xl leading-relaxed">
-            Dossier consulté avec le consentement explicite de l’exploitant, conformément à la loi
-            sénégalaise n° 2008-12 (CDP). L’export PDF scellé reprend l’empreinte SHA-256 globale de
-            la chaîne de mesures et la validation croisée Sentinel-1/2.
-          </p>
+      <section className="card p-4 lg:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-2 text-xs text-slate-600">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-forest-600" />
+            <p className="max-w-2xl leading-relaxed">
+              Dossier consulté avec le consentement explicite de l’exploitant, conformément à la loi
+              sénégalaise n° 2008-12 (CDP). L’export PDF scellé reprend l’empreinte SHA-256 globale de
+              la chaîne de mesures et la validation croisée Sentinel-1/2.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" onClick={onDownload} disabled={downloading}>
+              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Télécharger le Dossier de Crédit Score Vert (PDF)
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onExportBundle}
+              disabled={exporting}
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Archive vérifiable (.zip)
+            </button>
+          </div>
         </div>
-        <button type="button" className="btn-primary" onClick={onDownload} disabled={downloading}>
-          {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Télécharger le Dossier de Crédit Score Vert (PDF)
-        </button>
+        <p className="mt-2 border-t border-[#eef3f8] pt-2 text-[11px] leading-relaxed text-slate-500">
+          L’archive contient le PDF, <span className="font-mono">preuve.json</span> (relevés signés,
+          empreinte de chaîne, empreinte du PDF) et{' '}
+          <span className="font-mono">verifier.html</span> : la banque ouvre cette page hors ligne,
+          dépose les deux fichiers et le navigateur recalcule toute la chaîne SHA-256, sans serveur ni
+          service tiers.
+        </p>
       </section>
     </div>
   );

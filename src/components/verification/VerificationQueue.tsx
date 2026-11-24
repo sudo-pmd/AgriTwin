@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, Polygon, TileLayer } from 'react-leaflet';
+import {
+  SAT_ATTRIBUTION,
+  SAT_MAX_NATIVE_ZOOM,
+  SAT_MAX_ZOOM,
+  SAT_TILES,
+} from '../../utils/mapTiles';
 import Glyph from '../ui/Glyph';
+import PageHeader from '../ui/PageHeader';
 import type { Account } from '../../auth/accounts';
 import type { ParcelConfig, ParcelDocument, VerificationStatus } from '../../types/agritwin';
 import { CROP_CATALOG } from '../../data/seedData';
 import { getDocumentFile } from '../../storage/parcels';
 import { formatNumber } from '../../utils/format';
 
-const SAT_TILES =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
 interface VerificationQueueProps {
   account: Account;
   configs: ParcelConfig[];
-  onDecision: (id: string, status: VerificationStatus, note: string) => void;
+  /** Renvoie faux si le dossier a disparu ou n'est plus soumis. */
+  onDecision: (id: string, status: VerificationStatus, note: string) => boolean;
 }
 
 function DocumentRow({ document }: { document: ParcelDocument }) {
@@ -23,15 +29,19 @@ function DocumentRow({ document }: { document: ParcelDocument }) {
   useEffect(() => {
     let active = true;
     let created: string | null = null;
-    void getDocumentFile(document.id).then((blob) => {
-      if (!active) return;
-      if (!blob) {
-        setMissing(true);
-        return;
-      }
-      created = URL.createObjectURL(blob);
-      setUrl(created);
-    });
+    void getDocumentFile(document.id)
+      .then((blob) => {
+        if (!active) return;
+        if (!blob) {
+          setMissing(true);
+          return;
+        }
+        created = URL.createObjectURL(blob);
+        setUrl(created);
+      })
+      .catch(() => {
+        if (active) setMissing(true);
+      });
     return () => {
       active = false;
       if (created) URL.revokeObjectURL(created);
@@ -75,6 +85,7 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
   const list = tab === 'pending' ? pending : processed;
   const [selectedId, setSelectedId] = useState<string | null>(pending[0]?.id ?? null);
   const [note, setNote] = useState('');
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const selected = useMemo(
     () => list.find((config) => config.id === selectedId) ?? list[0] ?? null,
@@ -83,20 +94,25 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
 
   useEffect(() => {
     setNote(selected?.verification.note ?? '');
+    setFeedback(null);
   }, [selected?.id, selected?.verification.note]);
+
+  const decide = (status: VerificationStatus, value: string) => {
+    if (!selected) return;
+    if (!onDecision(selected.id, status, value)) {
+      setFeedback(
+        'Ce dossier n’est plus disponible : la file a été mise à jour. Sélectionnez un autre dossier.',
+      );
+    }
+  };
 
   return (
     <div className="space-y-4">
-      <header className="border-b border-[#dde5ee] pb-3">
-        <p className="eyebrow">Conformité · {account.organisation}</p>
-        <h1 className="mt-1 font-serif text-2xl leading-tight text-slateink-800 sm:text-3xl">
-          Vérification des parcelles
-        </h1>
-        <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-slate-500">
-          Contrôlez l’identité, le titre foncier et la géométrie déclarée avant de certifier la
-          parcelle et d’ouvrir son Score Vert.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow={`Conformité · ${account.organisation}`}
+        title="Vérification des parcelles"
+        description="Contrôlez l’identité, le titre foncier et la géométrie déclarée avant de certifier la parcelle et d’ouvrir son Score Vert."
+      />
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[340px_1fr]">
         <section className="card self-start">
@@ -136,8 +152,10 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
                   <button
                     type="button"
                     onClick={() => setSelectedId(config.id)}
-                    className={`w-full px-3.5 py-3 text-left transition ${
-                      selected?.id === config.id ? 'bg-forest-50/50' : 'hover:bg-[#f8fafc]'
+                    className={`w-full px-3.5 py-3 text-left transition-all duration-200 ${
+                      selected?.id === config.id
+                        ? 'bg-forest-50/50 shadow-[inset_2px_0_0_#14532d]'
+                        : 'hover:bg-[#f7fbf8] hover:shadow-[inset_2px_0_0_#86efac]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -222,8 +240,9 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
                   >
                     <TileLayer
                       url={SAT_TILES}
-                      attribution="Imagerie &copy; Esri"
-                      maxZoom={19}
+                      attribution={SAT_ATTRIBUTION}
+                      maxZoom={SAT_MAX_ZOOM}
+                      maxNativeZoom={SAT_MAX_NATIVE_ZOOM}
                     />
                     <Polygon
                       positions={
@@ -260,39 +279,82 @@ export default function VerificationQueue({ account, configs, onDecision }: Veri
                   )}
                 </ul>
 
-                <label className="field-label mt-4" htmlFor="review-note">
-                  Observation interne
-                </label>
-                <textarea
-                  id="review-note"
-                  className="field min-h-[74px] resize-y"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder="Concordance du titre, écart de contour, pièce illisible…"
-                />
+                {selected.verification.status === 'soumis' && (
+                  <>
+                    <label className="field-label mt-4" htmlFor="review-note">
+                      Observation interne
+                    </label>
+                    <textarea
+                      id="review-note"
+                      className="field min-h-[74px] resize-y"
+                      value={note}
+                      onChange={(event) => setNote(event.target.value)}
+                      placeholder="Concordance du titre, écart de contour, pièce illisible…"
+                    />
+                  </>
+                )}
 
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => onDecision(selected.id, 'verifie', note)}
+                {feedback && (
+                  <p
+                    role="alert"
+                    className="mt-2 border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[11.5px] font-semibold text-[#b91c1c]"
                   >
-                    <Glyph name="shieldCheck" className="h-4 w-4" />
-                    Certifier la parcelle
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary text-[#b91c1c]"
-                    onClick={() => onDecision(selected.id, 'rejete', note || 'Pièces incomplètes.')}
-                  >
-                    <Glyph name="close" className="h-4 w-4" />
-                    Rejeter
-                  </button>
-                </div>
-                <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                  La décision est horodatée et signée par {account.name}. Le titulaire est notifié
-                  dans son espace et peut corriger son dossier en cas de rejet.
-                </p>
+                    {feedback}
+                  </p>
+                )}
+
+                {selected.verification.status === 'soumis' ? (
+                  <>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => decide('verifie', note)}
+                      >
+                        <Glyph name="shieldCheck" className="h-4 w-4" />
+                        Certifier la parcelle
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary text-[#b91c1c]"
+                        onClick={() => decide('rejete', note || 'Pièces incomplètes.')}
+                      >
+                        <Glyph name="close" className="h-4 w-4" />
+                        Rejeter
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                      La décision est horodatée et signée par {account.name}. Le titulaire est
+                      notifié dans son espace et peut corriger son dossier en cas de rejet.
+                    </p>
+                  </>
+                ) : (
+                  <div className="mt-2 border border-[#eef3f8] bg-[#f8fafc] px-3 py-2 text-[11.5px] leading-relaxed text-slate-600">
+                    <p className="font-semibold text-slateink-800">
+                      Dossier{' '}
+                      {selected.verification.status === 'verifie'
+                        ? 'déjà certifié'
+                        : selected.verification.status === 'rejete'
+                          ? 'rejeté'
+                          : 'encore en brouillon'}
+                    </p>
+                    <p className="mt-0.5">
+                      {selected.verification.reviewedAt
+                        ? `Décision du ${new Date(
+                            selected.verification.reviewedAt,
+                          ).toLocaleDateString('fr-FR')} par ${
+                            selected.verification.reviewer ?? 'AgriTwin'
+                          }. `
+                        : ''}
+                      {selected.verification.note
+                        ? `Observation : ${selected.verification.note}`
+                        : 'Aucune observation.'}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Aucune décision possible tant que le titulaire n’a pas resoumis son dossier.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </section>

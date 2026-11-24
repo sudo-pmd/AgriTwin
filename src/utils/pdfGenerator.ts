@@ -84,7 +84,10 @@ function paragraph(doc: jsPDF, text: string, y: number, options?: { size?: numbe
   return y + lines.length * (size * 0.48) + 2.5;
 }
 
-export async function generateCreditPdf(input: PdfInput): Promise<{ filename: string; documentHash: string }> {
+export async function generateCreditPdf(
+  input: PdfInput,
+  options?: { download?: boolean },
+): Promise<{ filename: string; documentHash: string; bytes: ArrayBuffer }> {
   const { parcel, dataset, score, verdict, assurance, projection, chainHash } = input;
   const latest = dataset.records[dataset.records.length - 1];
   const issuedAt = new Date();
@@ -376,6 +379,7 @@ export async function generateCreditPdf(input: PdfInput): Promise<{ filename: st
   }
 
   const filename = `AgriTwin_ScoreVert_${parcel.id}.pdf`;
-  doc.save(filename);
-  return { filename, documentHash };
+  const bytes = doc.output('arraybuffer') as ArrayBuffer;
+  if (options?.download !== false) doc.save(filename);
+  return { filename, documentHash, bytes };
 }

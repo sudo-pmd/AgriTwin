@@ -66,13 +66,13 @@ function writeAccounts(accounts: Account[]) {
   window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 
-export function makeSalt(): string {
+function makeSalt(): string {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
   return [...bytes].map((value) => value.toString(16).padStart(2, '0')).join('');
 }
 
-export async function hashPassword(password: string, salt: string): Promise<string> {
+async function hashPassword(password: string, salt: string): Promise<string> {
   const data = new TextEncoder().encode(`${salt}:${password}`);
   const digest = await crypto.subtle.digest('SHA-256', data);
   return [...new Uint8Array(digest)]
@@ -100,6 +100,13 @@ export async function ensureAccounts(): Promise<Account[]> {
   }
   writeAccounts(seeded);
   return seeded;
+}
+
+/** Efface comptes et session, puis recrée les trois comptes de démonstration. */
+export async function resetAccounts(): Promise<Account[]> {
+  window.localStorage.removeItem(ACCOUNTS_KEY);
+  window.localStorage.removeItem(SESSION_KEY);
+  return ensureAccounts();
 }
 
 export function normalisePhone(value: string): string {

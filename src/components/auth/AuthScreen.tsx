@@ -5,6 +5,7 @@ import type { AccountRole } from '../../types/agritwin';
 
 interface AuthScreenProps {
   onAuthenticated: (account: Account) => void;
+  onStartDemo?: () => void;
 }
 
 const ROLE_LABEL: Record<AccountRole, string> = {
@@ -13,7 +14,7 @@ const ROLE_LABEL: Record<AccountRole, string> = {
   verificateur: 'Conformité AgriTwin',
 };
 
-export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
+export default function AuthScreen({ onAuthenticated, onStartDemo }: AuthScreenProps) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -26,13 +27,20 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   const run = async (action: () => Promise<{ account?: Account; error?: string }>) => {
     setBusy(true);
     setError(null);
-    const result = await action();
-    setBusy(false);
-    if (result.error) {
-      setError(result.error);
-      return;
+    try {
+      const result = await action();
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      if (result.account) onAuthenticated(result.account);
+    } catch {
+      setError(
+        'Connexion impossible : vérifiez que votre navigateur autorise le stockage local et Web Crypto.',
+      );
+    } finally {
+      setBusy(false);
     }
-    if (result.account) onAuthenticated(result.account);
   };
 
   const submit = (event: React.FormEvent) => {
@@ -232,7 +240,10 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             </p>
             <ul className="mt-2 divide-y divide-[#e6edf4] border border-[#dde5ee] bg-white">
               {DEMO_LOGINS.map((demo) => (
-                <li key={demo.phone} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <li
+                  key={demo.phone}
+                  className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors duration-200 hover:bg-[#f7fbf8]"
+                >
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold text-slateink-800">
                       {demo.name}
@@ -242,6 +253,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   <button
                     type="button"
                     className="btn-secondary shrink-0 px-2.5 py-1 text-[11px]"
+                    disabled={busy}
                     onClick={() => void run(() => signIn(demo.phone, demo.password))}
                   >
                     Entrer
@@ -253,6 +265,19 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               Démonstration : mot de passe <span className="font-mono">demo1234</span>. Les comptes
               créés et les pièces déposées restent sur cet appareil.
             </p>
+            {onStartDemo && (
+              <div className="mt-3 border-t border-[#dde5ee] pt-3">
+                <button type="button" className="btn-primary w-full" onClick={onStartDemo} disabled={busy}>
+                  <Glyph name="play" className="h-4 w-4" />
+                  Lancer la démo guidée
+                  <Glyph name="arrowRight" className="h-4 w-4" />
+                </button>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                  Réinitialise comptes et données locales, puis déroule le parcours complet en huit
+                  étapes, sans recherche dans les menus.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>

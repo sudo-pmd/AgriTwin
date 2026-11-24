@@ -554,9 +554,14 @@ function mulberry32(seed: number) {
 }
 
 export function boundaryForConfig(config: ParcelConfig): [number, number][] {
-  return config.boundary.length >= 3
-    ? config.boundary
-    : buildBoundary(config.centre, Math.max(0.1, config.areaHa));
+  const boundary =
+    config.boundary.length >= 3
+      ? config.boundary
+      : buildBoundary(config.centre, Math.max(0.1, config.areaHa));
+  const [first] = boundary;
+  const [last] = boundary.slice(-1);
+  // Un anneau dessiné à la main n'est pas refermé : turf exige premier = dernier point.
+  return first[0] === last[0] && first[1] === last[1] ? boundary : [...boundary, first];
 }
 
 /**

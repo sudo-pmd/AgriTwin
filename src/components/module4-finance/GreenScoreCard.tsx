@@ -12,6 +12,7 @@ import {
 } from '../ui/icons';
 import type { GreenScoreResult, Parcel } from '../../types/agritwin';
 import { formatNumber } from '../../utils/format';
+import { SCORE_WEIGHTS, SOIL_POINTS } from '../../utils/greenScoreEngine';
 
 interface GreenScoreCardProps {
   score: GreenScoreResult;
@@ -38,50 +39,75 @@ export default function GreenScoreCard({
   ph,
   pestNote,
 }: GreenScoreCardProps) {
-  const tone =
-    score.total >= 75 ? '#16a34a' : score.total >= 50 ? '#d97706' : '#dc2626';
-  const profileLabel =
-    score.profile === 'A' ? 'Profil A — éligible' : score.profile === 'B' ? 'Profil B — suivi coopératif' : 'Profil C — audit requis';
+  // Une fraude, une chaîne rompue ou un scellé ouvert priment sur le score brut.
+  const suspended = frozen || score.fraudDetected || !score.chainValid;
+  const tone = suspended
+    ? '#dc2626'
+    : score.total >= 75
+      ? '#16a34a'
+      : score.total >= 50
+        ? '#d97706'
+        : '#dc2626';
+  const profileLabel = suspended
+    ? 'Dossier suspendu'
+    : score.profile === 'A'
+      ? 'Profil A — éligible'
+      : score.profile === 'B'
+        ? 'Profil B — suivi coopératif'
+        : 'Profil C — audit requis';
+  const statusLabel = suspended
+    ? 'Décaissement suspendu — audit requis'
+    : score.total >= 75
+      ? 'Éligible au déblocage de la tranche 2'
+      : score.total >= 50
+        ? 'Éligible sous suivi coopératif'
+        : 'Décaissement suspendu — audit requis';
 
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const dash = (Math.min(100, Math.max(0, score.total)) / 100) * circumference;
+
+  /** La couleur d'une barre traduit la performance, comme les statuts du reste de l'app. */
+  const barTone = (value: number, max: number) => {
+    const ratio = value / max;
+    return ratio >= 0.85 ? '#16a34a' : ratio >= 0.5 ? '#d97706' : '#dc2626';
+  };
 
   const criteria = [
     {
       icon: Droplets,
       label: 'Régularité hydrique',
       value: score.water,
-      max: 35,
+      max: SCORE_WEIGHTS.water,
       detail: `${score.waterDaysInRange}/${score.totalDays} jours avec humidité 15 cm entre 20 % et 35 %`,
-      color: '#15803d',
+      color: barTone(score.water, SCORE_WEIGHTS.water),
     },
     {
       icon: Leaf,
       label: 'Vigueur végétative',
       value: score.vegetation,
-      max: 25,
+      max: SCORE_WEIGHTS.vegetation,
       detail: 'NDVI Sentinel-2 × 32, plafonné à 25 points',
-      color: '#0284c7',
+      color: barTone(score.vegetation, SCORE_WEIGHTS.vegetation),
     },
     {
       icon: Sprout,
       label: 'Santé et salinité du sol',
       value: score.soil,
-      max: 20,
-      detail: `EC ${formatNumber(ec, 2)} dS/m · pH ${formatNumber(ph, 2)} — barème 20 / 14 / 7 pts`,
-      color: '#d97706',
+      max: SCORE_WEIGHTS.soil,
+      detail: `EC ${formatNumber(ec, 2)} dS/m · pH ${formatNumber(ph, 2)} — barème ${SOIL_POINTS.optimal} / ${SOIL_POINTS.partial} / ${SOIL_POINTS.degraded} pts`,
+      color: barTone(score.soil, SCORE_WEIGHTS.soil),
     },
     {
       icon: score.integrity > 0 ? ShieldCheck : ShieldAlert,
       label: 'Intégrité physique & cryptographique',
       value: score.integrity,
-      max: 20,
+      max: SCORE_WEIGHTS.integrity,
       detail:
         score.integrity > 0
           ? `Chaîne SHA-256 valide, scellé intact, écart sonde/radar ${formatNumber(score.satelliteGap)} pts`
           : `Anomalie détectée — écart sonde/radar ${formatNumber(score.satelliteGap)} pts`,
-      color: score.integrity > 0 ? '#16a34a' : '#dc2626',
+      color: barTone(score.integrity, SCORE_WEIGHTS.integrity),
     },
   ];
 
@@ -124,12 +150,12 @@ export default function GreenScoreCard({
               / 100
             </text>
           </svg>
-          <p className="mt-1 text-center text-[11px] font-semibold leading-tight text-slate-500">
-            {score.total >= 75
-              ? 'Éligible au déblocage de la tranche 2'
-              : score.total >= 50
-                ? 'Éligible sous suivi coopératif'
-                : 'Décaissement suspendu — audit requis'}
+          <p
+            className={`mt-1 text-center text-[11px] font-semibold leading-tight ${
+              suspended ? 'text-[#b91c1c]' : 'text-slate-500'
+            }`}
+          >
+            {statusLabel}
           </p>
         </div>
 

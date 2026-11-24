@@ -101,7 +101,10 @@ export default function CryptoAuditTable({ records }: CryptoAuditTableProps) {
               const gap = Math.abs(record.moisture15 - record.sentinel1Humidity);
               const coherent = gap <= 15;
               return (
-                <tr key={record.id + record.timestamp} className="hover:bg-[#f8fafc]">
+                <tr
+                  key={record.id + record.timestamp}
+                  className="transition-colors duration-150 hover:bg-[#f6faf7]"
+                >
                   <td className="whitespace-nowrap px-2.5 py-1.5 font-semibold text-slateink-800">
                     {formatDate(record.timestamp)}
                   </td>

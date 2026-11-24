@@ -1,8 +1,15 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Polygon, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
+import {
+  SAT_ATTRIBUTION,
+  SAT_MAX_NATIVE_ZOOM,
+  SAT_MAX_ZOOM,
+  SAT_TILES,
+} from '../../utils/mapTiles';
 import L from 'leaflet';
 import * as turf from '@turf/turf';
 import Glyph from '../ui/Glyph';
+import PageHeader from '../ui/PageHeader';
 import type { Account } from '../../auth/accounts';
 import type {
   CropKey,
@@ -13,11 +20,24 @@ import type {
   VerificationStatus,
 } from '../../types/agritwin';
 import { CROP_CATALOG } from '../../data/seedData';
-import { documentLabel, putDocumentFile, deleteDocumentFile } from '../../storage/parcels';
+import {
+  documentLabel,
+  putDocumentFile,
+  deleteDocumentFile,
+  storageUsage,
+} from '../../storage/parcels';
+import {
+  DocumentLimitError,
+  MAX_DOSSIER_BYTES,
+  MAX_FILE_BYTES,
+  MAX_PHOTOS,
+  MAX_STORAGE_BYTES,
+  documentsProblem,
+  inspectFile,
+  megabytes,
+} from '../../utils/documentLimits';
 import { formatNumber } from '../../utils/format';
 
-const SAT_TILES =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
 const REQUIRED: DocumentKind[] = ['identite', 'foncier'];
 const OPTIONAL: DocumentKind[] = ['exploitation', 'photo'];
@@ -66,9 +86,18 @@ function MapEvents({
   return null;
 }
 
+/** Turf exige un anneau fermé : le premier point doit être répété à la fin. */
+function closedRing(points: [number, number][]): [number, number][] {
+  const ring: [number, number][] = points.map(([lat, lng]) => [lng, lat]);
+  const [first] = ring;
+  const last = ring[ring.length - 1];
+  if (first[0] !== last[0] || first[1] !== last[1]) ring.push(first);
+  return ring;
+}
+
 function polygonArea(points: [number, number][]): number {
   if (points.length < 3) return 0;
-  return turf.area(turf.polygon([points.map(([lat, lng]) => [lng, lat])])) / 10_000;
+  return turf.area(turf.polygon([closedRing(points)])) / 10_000;
 }
 
 interface ParcelSetupProps {
@@ -93,14 +122,45 @@ export default function ParcelSetup({
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const pending = useRef<Map<string, File>>(new Map());
+  const [deviceBytes, setDeviceBytes] = useState<number | null>(null);
+  // Pièces réellement rattachées à une déclaration enregistrée.
+  const storedIds = useRef<Set<string>>(new Set());
+  // Pièces retirées de la déclaration : effacées seulement à l'enregistrement.
+  const removedIds = useRef<Set<string>>(new Set());
+
+  // Occupation réelle du stockage local, tous dossiers confondus.
+  const refreshUsage = () => {
+    void storageUsage()
+      .then((usage) => setDeviceBytes(usage.bytes))
+      .catch(() => setDeviceBytes(null));
+  };
+  useEffect(refreshUsage, []);
 
   const patch = (next: Partial<ParcelConfig>) => {
     setDraft((current) => (current ? { ...current, ...next } : current));
     setSaved(false);
   };
 
+  /** Abandonne la déclaration courante et efface les pièces jamais enregistrées. */
+  const discardDraft = () => {
+    for (const document of draft?.documents ?? []) {
+      if (!storedIds.current.has(document.id)) void deleteDocumentFile(document.id);
+    }
+    removedIds.current.clear();
+    setDraft(null);
+  };
+
+  const openExisting = (config: ParcelConfig) => {
+    discardDraft();
+    config.documents.forEach((document) => storedIds.current.add(document.id));
+    setDraft(structuredClone(config));
+    setStep(0);
+    setError(null);
+    setSaved(false);
+  };
+
   const startNew = () => {
+    discardDraft();
     const id = `PARC-${Date.now().toString(36).toUpperCase().slice(-6)}`;
     setDraft({
       id,
@@ -125,37 +185,106 @@ export default function ParcelSetup({
 
   const addFiles = async (kind: DocumentKind, files: FileList | null) => {
     if (!draft || !files) return;
+    // Le champ est vidé par l'appelant : on fige la sélection avant tout await.
+    const selected = Array.from(files);
     const added: ParcelDocument[] = [];
-    for (const file of Array.from(files).slice(0, kind === 'photo' ? 4 : 1)) {
+    const rejected: string[] = [];
+    let photos = draft.documents.filter((document) => document.kind === 'photo').length;
+    let totalBytes = draft.documents.reduce((sum, document) => sum + document.size, 0);
+    let storageFailed = false;
+    let freeBytes = MAX_STORAGE_BYTES;
+    try {
+      freeBytes = MAX_STORAGE_BYTES - (await storageUsage()).bytes;
+    } catch {
+      // Stockage illisible : putDocumentFile refusera de toute façon.
+      freeBytes = MAX_STORAGE_BYTES;
+    }
+
+    for (const file of selected) {
+      let inspected: Awaited<ReturnType<typeof inspectFile>>;
+      try {
+        inspected = await inspectFile(file, kind);
+      } catch {
+        rejected.push(`${file.name} — fichier illisible`);
+        continue;
+      }
+      if ('problem' in inspected) {
+        rejected.push(`${file.name} — ${inspected.problem}`);
+        continue;
+      }
+      if (kind === 'photo' && photos >= MAX_PHOTOS) {
+        rejected.push(`${file.name} — ${MAX_PHOTOS} photos maximum`);
+        continue;
+      }
+      if (totalBytes + file.size > MAX_DOSSIER_BYTES) {
+        rejected.push(`${file.name} — quota du dossier de ${megabytes(MAX_DOSSIER_BYTES)} atteint`);
+        continue;
+      }
+      if (file.size > freeBytes) {
+        rejected.push(
+          `${file.name} — espace local saturé (${megabytes(MAX_STORAGE_BYTES)} pour toutes les pièces)`,
+        );
+        continue;
+      }
+
       const doc: ParcelDocument = {
         id: `DOC-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
         kind,
         label: documentLabel(kind),
         fileName: file.name,
         size: file.size,
-        mime: file.type || 'application/octet-stream',
+        mime: inspected.mime,
         uploadedAt: new Date().toISOString(),
         status: 'en_attente',
       };
-      pending.current.set(doc.id, file);
-      await putDocumentFile(doc.id, file);
+      try {
+        await putDocumentFile(doc.id, file);
+      } catch (storageError) {
+        if (storageError instanceof DocumentLimitError) {
+          rejected.push(`${file.name} — ${storageError.message}`);
+          continue;
+        }
+        storageFailed = true;
+        break;
+      }
       added.push(doc);
+      totalBytes += file.size;
+      freeBytes -= file.size;
+      if (kind === 'photo') photos += 1;
     }
-    setDraft((current) =>
-      current ? { ...current, documents: [...current.documents, ...added] } : current,
-    );
-    setSaved(false);
+
+    if (added.length > 0) {
+      setDraft((current) =>
+        current ? { ...current, documents: [...current.documents, ...added] } : current,
+      );
+      setSaved(false);
+    }
+
+    const notices: string[] = [];
+    if (rejected.length > 0) {
+      notices.push(
+        `Fichier(s) ignoré(s) : ${rejected.slice(0, 3).join(' · ')}${
+          rejected.length > 3 ? ` · +${rejected.length - 3} autre(s)` : ''
+        }`,
+      );
+    }
+    if (storageFailed) {
+      notices.push(
+        'Le stockage local du navigateur est saturé ou indisponible : certains fichiers n’ont pas pu être conservés.',
+      );
+    }
+    setError(notices.length > 0 ? notices.join(' ') : null);
+    refreshUsage();
   };
 
-  const removeDocument = async (doc: ParcelDocument) => {
-    if (!draft) return;
-    pending.current.delete(doc.id);
-    await deleteDocumentFile(doc.id);
+  const removeDocument = (doc: ParcelDocument) => {
+    removedIds.current.add(doc.id);
     setDraft((current) =>
       current
         ? { ...current, documents: current.documents.filter((item) => item.id !== doc.id) }
         : current,
     );
+    setSaved(false);
   };
 
   const hasRequired = useMemo(() => {
@@ -175,6 +304,8 @@ export default function ParcelSetup({
     ) {
       return 'Coordonnées GPS invalides (latitude entre -90 et 90, longitude entre -180 et 180).';
     }
+    const documentsIssue = documentsProblem(draft.documents);
+    if (documentsIssue) return documentsIssue;
     if (forSubmit && !hasRequired) return "Pièce d'identité et titre foncier (ou bail) obligatoires.";
     return null;
   };
@@ -186,32 +317,39 @@ export default function ParcelSetup({
       setError(problem);
       return;
     }
+    // Un dossier déjà contrôlé repart en brouillon dès qu'il est modifié.
+    const reviewed =
+      draft.verification.status === 'soumis' || draft.verification.status === 'verifie';
     const next: ParcelConfig = {
       ...draft,
+      documents: draft.documents.map((document) => ({
+        ...document,
+        status: 'en_attente' as const,
+        note: undefined,
+      })),
       verification: forSubmit
-        ? {
-            ...draft.verification,
-            status: 'soumis',
-            submittedAt: new Date().toISOString(),
-            note: undefined,
-            reviewedAt: undefined,
-            reviewer: undefined,
-          }
-        : draft.verification,
+        ? { status: 'soumis', submittedAt: new Date().toISOString() }
+        : reviewed
+          ? { status: 'brouillon' }
+          : draft.verification,
     };
+    next.documents.forEach((document) => storedIds.current.add(document.id));
+    for (const id of removedIds.current) {
+      void deleteDocumentFile(id);
+      storedIds.current.delete(id);
+    }
+    removedIds.current.clear();
     setError(null);
     setDraft(next);
-    if (forSubmit) {
-      onSubmit(next);
-      setSaved(true);
-    } else {
-      onSave(next);
-      setSaved(true);
-    }
+    refreshUsage();
+    if (forSubmit) onSubmit(next);
+    else onSave(next);
+    setSaved(true);
   };
 
   const points = draft?.boundary ?? [];
   const centre = draft?.centre ?? { lat: 14.7167, lng: -16.4492 };
+  const dossierBytes = draft?.documents.reduce((sum, document) => sum + document.size, 0) ?? 0;
   const [drawing, setDrawing] = useState(false);
 
   const setCentre = (point: GeoPoint) => {
@@ -222,22 +360,17 @@ export default function ParcelSetup({
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-[#dde5ee] pb-3">
-        <div>
-          <p className="eyebrow">Déclaration &amp; conformité</p>
-          <h1 className="mt-1 font-serif text-2xl leading-tight text-slateink-800 sm:text-3xl">
-            Mes parcelles
-          </h1>
-          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-slate-500">
-            Déclarez la géométrie de votre parcelle, déposez les pièces justificatives et suivez la
-            vérification réalisée par les équipes AgriTwin.
-          </p>
-        </div>
-        <button type="button" className="btn-primary" onClick={startNew}>
-          <Glyph name="plus" className="h-4 w-4" />
-          Nouvelle parcelle
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="Déclaration & conformité"
+        title="Mes parcelles"
+        description="Déclarez la géométrie de votre parcelle, déposez les pièces justificatives et suivez la vérification réalisée par les équipes AgriTwin."
+        actions={
+          <button type="button" className="btn-primary" onClick={startNew}>
+            <Glyph name="plus" className="h-4 w-4" />
+            Nouvelle parcelle
+          </button>
+        }
+      />
 
       {certified.length > 0 && (
         <div>
@@ -250,7 +383,7 @@ export default function ParcelSetup({
                 <button
                   type="button"
                   onClick={() => onOpenParcel(parcel.id)}
-                  className="flex w-full items-start justify-between gap-3 border border-[#dde5ee] bg-white p-3.5 text-left transition hover:border-forest-400"
+                  className="interactive-card group flex w-full items-start justify-between gap-3 border border-[#dde5ee] bg-white p-3.5 text-left hover:border-forest-400"
                 >
                   <span className="min-w-0">
                     <span className="chip border-[#bbf7d0] bg-[#f0fdf4] text-forest-700">
@@ -265,7 +398,10 @@ export default function ParcelSetup({
                       {parcel.documents} pièce(s)
                     </span>
                   </span>
-                  <Glyph name="arrowRight" className="mt-1 h-4 w-4 shrink-0 text-forest-700" />
+                  <Glyph
+                    name="arrowRight"
+                    className="mt-1 h-4 w-4 shrink-0 text-forest-700 transition-transform duration-200 group-hover:translate-x-0.5"
+                  />
                 </button>
               </li>
             ))}
@@ -282,13 +418,8 @@ export default function ParcelSetup({
               <li key={config.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setDraft(structuredClone(config));
-                    setStep(0);
-                    setError(null);
-                    setSaved(false);
-                  }}
-                  className={`w-full border p-3.5 text-left transition ${
+                  onClick={() => openExisting(config)}
+                  className={`interactive-card w-full border p-3.5 text-left ${
                     active
                       ? 'border-forest-700 bg-forest-50/40'
                       : 'border-[#dde5ee] bg-white hover:border-forest-400'
@@ -345,7 +476,7 @@ export default function ParcelSetup({
               <span className={`chip ${STATUS_META[draft.verification.status].className}`}>
                 {STATUS_META[draft.verification.status].label}
               </span>
-              <button type="button" className="btn-ghost px-2" onClick={() => setDraft(null)}>
+              <button type="button" className="btn-ghost px-2" onClick={discardDraft}>
                 <Glyph name="close" className="h-4 w-4" />
                 <span className="sr-only">Fermer</span>
               </button>
@@ -522,8 +653,9 @@ export default function ParcelSetup({
                   >
                     <TileLayer
                       url={SAT_TILES}
-                      attribution="Imagerie &copy; Esri, Maxar, Earthstar Geographics"
-                      maxZoom={19}
+                      attribution={SAT_ATTRIBUTION}
+                      maxZoom={SAT_MAX_ZOOM}
+                      maxNativeZoom={SAT_MAX_NATIVE_ZOOM}
                     />
                     <MapEvents
                       drawing={drawing}
@@ -568,9 +700,8 @@ export default function ParcelSetup({
                             onClick={() => {
                               const area = polygonArea(points);
                               if (area > 0) {
-                                const centroid = turf.centroid(
-                                  turf.polygon([points.map(([lat, lng]) => [lng, lat])]),
-                                ).geometry.coordinates;
+                                const centroid = turf.centroid(turf.polygon([closedRing(points)]))
+                                  .geometry.coordinates;
                                 patch({
                                   areaHa: Number(area.toFixed(2)),
                                   centre: { lat: centroid[1], lng: centroid[0] },
@@ -635,8 +766,10 @@ export default function ParcelSetup({
                           </p>
                           <p className="text-[11px] text-slate-500">
                             {kind === 'photo'
-                              ? 'JPG ou PNG, 4 photos maximum.'
-                              : 'PDF, JPG ou PNG, 10 Mo maximum.'}
+                              ? `JPG ou PNG, ${MAX_PHOTOS} photos maximum, ${megabytes(
+                                  MAX_FILE_BYTES,
+                                )} par photo.`
+                              : `PDF, JPG ou PNG, ${megabytes(MAX_FILE_BYTES)} maximum par fichier.`}
                           </p>
                         </div>
                         <label className="btn-secondary cursor-pointer px-2.5 py-1 text-[11px]">
@@ -645,7 +778,11 @@ export default function ParcelSetup({
                           <input
                             type="file"
                             className="sr-only"
-                            accept={kind === 'photo' ? 'image/*' : 'application/pdf,image/*'}
+                            accept={
+                              kind === 'photo'
+                                ? 'image/jpeg,image/png'
+                                : 'application/pdf,image/jpeg,image/png'
+                            }
                             multiple={kind === 'photo'}
                             onChange={(event) => {
                               void addFiles(kind, event.target.files);
@@ -691,6 +828,29 @@ export default function ParcelSetup({
                     </div>
                   );
                 })}
+                <p className="flex flex-wrap items-center justify-between gap-2 border border-[#eef3f8] bg-[#fbfdfc] px-3 py-2 text-[11px] text-slate-500">
+                  <span>
+                    Quota du dossier : {megabytes(MAX_DOSSIER_BYTES)} au total, {MAX_PHOTOS}{' '}
+                    photos maximum, {megabytes(MAX_FILE_BYTES)} par pièce.
+                  </span>
+                  <span className="text-right">
+                    <span
+                      className={`block font-semibold ${
+                        dossierBytes > MAX_DOSSIER_BYTES * 0.9
+                          ? 'text-[#b45309]'
+                          : 'text-slateink-800'
+                      }`}
+                    >
+                      {megabytes(dossierBytes)} utilisés
+                    </span>
+                    {deviceBytes !== null && (
+                      <span className="block text-[10px] text-slate-400">
+                        Appareil : {megabytes(deviceBytes)} / {megabytes(MAX_STORAGE_BYTES)} toutes
+                        pièces
+                      </span>
+                    )}
+                  </span>
+                </p>
                 <p className="text-[11px] leading-relaxed text-slate-500">
                   Les fichiers sont conservés localement sur cet appareil pour la démonstration. En
                   production, ils sont chiffrés et transmis au dossier de vérification AgriTwin.
@@ -709,7 +869,7 @@ export default function ParcelSetup({
                     ['Coordonnées', `${draft.centre.lat.toFixed(5)}, ${draft.centre.lng.toFixed(5)}`],
                     ['Surface', `${formatNumber(draft.areaHa, 2)} ha`],
                     ['Contour', points.length >= 3 ? `${points.length} sommets` : 'Emprise générée'],
-                    ['Pièces', `${draft.documents.length} fichier(s)`],
+                    ['Pièces', `${draft.documents.length} fichier(s) · ${megabytes(dossierBytes)}`],
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between gap-3 px-3 py-2">
                       <dt className="text-[11px] uppercase tracking-wide text-slate-500">{label}</dt>
@@ -745,7 +905,8 @@ export default function ParcelSetup({
                       {draft.verification.submittedAt
                         ? new Date(draft.verification.submittedAt).toLocaleDateString('fr-FR')
                         : '—'}
-                      . Délai de contrôle habituel : 72 h ouvrées.
+                      . Délai de contrôle habituel : 72 h ouvrées. Toute modification enregistrée
+                      maintenant repassera le dossier en brouillon et annulera cette transmission.
                     </p>
                   )}
                   {draft.verification.status === 'rejete' && draft.verification.note && (
@@ -771,7 +932,7 @@ export default function ParcelSetup({
                 <Glyph name="check" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {draft.verification.status === 'soumis'
                   ? 'Dossier transmis aux équipes AgriTwin pour vérification.'
-                  : 'Brouillon enregistré.'}
+                  : 'Brouillon enregistré — le dossier devra être soumis pour contrôle.'}
               </p>
             )}
           </div>
@@ -801,7 +962,6 @@ export default function ParcelSetup({
                       return;
                     }
                     setError(null);
-                    onSave(draft);
                     setStep((value) => Math.min(STEPS.length - 1, value + 1));
                   }}
                 >
